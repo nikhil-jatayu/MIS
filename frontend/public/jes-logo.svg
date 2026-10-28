@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="JES Electronics Systems">
+  <rect width="64" height="64" rx="14" fill="#0f5c73"/>
+  <path d="M12 19h40v7H36v9h13v7H36v3h16v7H12v-7h17v-3H15v-7h14v-9H12z" fill="#ffffff"/>
+  <circle cx="49" cy="15" r="5" fill="#2dd4bf"/>
+</svg>
