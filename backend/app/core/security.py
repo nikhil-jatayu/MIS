@@ -32,7 +32,7 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, password_hash: str) -> bool:
     try:
         return bcrypt.checkpw(_prehash(password), password_hash.encode("utf-8"))
-    except ValueError, TypeError:
+    except (ValueError, TypeError):
         return False
 
 
