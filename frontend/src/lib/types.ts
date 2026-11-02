@@ -219,3 +219,129 @@ export interface AlertRunResult {
 export interface MessageResponse {
   message: string;
 }
+
+export type ProductionActionStatus = "OPEN" | "IN_PROGRESS" | "ON_HOLD" | "CLOSED";
+
+export interface ProductionEntry {
+  id: string;
+  production_date: string;
+  production_line: string;
+  product_model: string;
+  work_order_customer: string | null;
+  process_stage: string;
+  unit_of_measure: string;
+  planned_quantity: number;
+  actual_quantity: number;
+  accepted_quantity: number;
+  rejected_quantity: number;
+  rework_quantity: number;
+  production_hours: number;
+  downtime_hours: number;
+  plan_achievement_percent: number | null;
+  first_pass_yield_percent: number | null;
+  rejection_percent: number | null;
+  downtime_percent: number | null;
+  month: string;
+  project_id: string | null;
+  remarks: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  creator: UserSummary;
+}
+
+export interface ProductionEntryCreate {
+  production_date: string;
+  production_line: string;
+  product_model: string;
+  work_order_customer?: string | null;
+  process_stage: string;
+  unit_of_measure: string;
+  planned_quantity: number;
+  actual_quantity: number;
+  accepted_quantity: number;
+  rework_quantity: number;
+  production_hours: number;
+  downtime_hours: number;
+  project_id?: string | null;
+  remarks?: string | null;
+}
+
+export interface ProductionAction {
+  id: string;
+  action_number: string;
+  date_raised: string;
+  issue_observation: string;
+  corrective_action: string;
+  responsible_user_id: string | null;
+  deadline: string;
+  status: ProductionActionStatus;
+  closed_at: string | null;
+  closed_by_user_id: string | null;
+  closure_evidence: string | null;
+  remarks: string | null;
+  project_id: string | null;
+  production_entry_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  responsible_user: UserSummary | null;
+  creator: UserSummary;
+  closed_by: UserSummary | null;
+  is_overdue: boolean;
+}
+
+export interface ProductionActionCreate {
+  date_raised: string;
+  issue_observation: string;
+  corrective_action: string;
+  responsible_user_id: string;
+  deadline: string;
+  remarks?: string | null;
+  project_id?: string | null;
+  production_entry_id?: string | null;}
+
+export interface ProductionUnitSummary {
+  unit_of_measure: string;
+  entries_count: number;
+  planned_quantity: number;
+  actual_quantity: number;
+  accepted_quantity: number;
+  rejected_quantity: number;
+  rework_quantity: number;
+  production_hours: number;
+  downtime_hours: number;
+  plan_achievement_percent: number | null;
+  first_pass_yield_percent: number | null;
+  rejection_percent: number | null;
+  downtime_percent: number | null;
+}
+
+export interface ProductionMonthlyReview {
+  id: string;
+  year: number;
+  month: number;
+  management_summary: string;
+  prepared_by_user_id: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  prepared_by: UserSummary;
+  reviewed_by: UserSummary | null;
+}
+
+export interface ProductionSummary {
+  year: number;
+  month: number;
+  units: ProductionUnitSummary[];
+  open_actions: number;
+  overdue_actions: number;
+  closed_this_month: number;
+  monthly_review: ProductionMonthlyReview | null;
+}
+
+export interface ProductionAssignee {
+  id: string;
+  name: string;
+}
