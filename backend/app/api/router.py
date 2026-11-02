@@ -10,6 +10,7 @@ from app.api.routes import (
     dashboard,
     inventory,
     progress,
+    production,
     projects,
     purchases,
     settings,
@@ -24,6 +25,7 @@ api_router.include_router(projects.router)
 api_router.include_router(purchases.router)
 api_router.include_router(purchases.project_router)
 api_router.include_router(progress.router)
+api_router.include_router(production.router)
 api_router.include_router(attachments.router)
 api_router.include_router(alerts.router)
 api_router.include_router(audit.router)
