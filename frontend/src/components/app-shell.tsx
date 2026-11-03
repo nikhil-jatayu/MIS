@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  Building2,
   Boxes,
   ClipboardList,
   Factory,
@@ -22,12 +23,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppShellSkeleton } from "@/components/app-shell-skeleton";
-import { MisBrand } from "@/components/mis-brand";
+import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { AuthGate } from "@/components/auth-gate";
 import { Avatar, Badge } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
@@ -99,10 +100,8 @@ function pageTitle(pathname: string) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (isLoading || !user) {
@@ -121,10 +120,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   async function handleLogout() {
     try {
-      await apiFetch<MessageResponse>("/auth/logout", { method: "POST" });
-      queryClient.clear();
-      router.replace("/login");
+      // Keep the auth query observer alive and explicitly mark the session
+      // anonymous. Clearing the entire QueryClient here removes the active
+      // session query and can leave AuthGate stuck in its loading state.
+      await logout();
       toast.success("Signed out");
+      // A full navigation resets all user-scoped client state and guarantees
+      // that the signed-out login screen is rendered from a fresh app shell.
+      window.location.replace("/login");
     } catch (error) {
       toast.error(errorMessage(error, "Unable to sign out."));
     }
@@ -219,8 +222,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
 
-        <footer className="border-t border-slate-200 bg-white px-4 py-4 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
-          MIS · Management Information System
+        <footer className="border-t border-slate-200 bg-gradient-to-b from-slate-50 to-white px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[1500px] justify-center">
+            <div className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 via-white to-cyan-50 px-5 py-4 text-center shadow-sm shadow-teal-900/5 sm:flex-row sm:justify-center sm:gap-4 sm:px-7">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#082f3d] text-teal-100 shadow-sm">
+                <Building2 aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <OrganizationCredit className="text-center sm:text-left" />
+            </div>
+          </div>
         </footer>
       </div>
     </div>

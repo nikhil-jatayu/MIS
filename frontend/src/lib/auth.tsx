@@ -75,11 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    try {
-      await apiFetch("/auth/logout", { method: "POST" });
-    } finally {
-      queryClient.setQueryData(SESSION_KEY, null);
-    }
+    await apiFetch("/auth/logout", { method: "POST" });
+    queryClient.setQueryData(SESSION_KEY, null);
   }, [queryClient]);
 
   const changePassword = useCallback(

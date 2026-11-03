@@ -53,3 +53,38 @@ export function MisBrand({
     </div>
   );
 }
+
+
+interface OrganizationCreditProps {
+  variant?: "light" | "dark";
+  className?: string;
+}
+
+/** Identifies the organization responsible for building and managing MIS. */
+export function OrganizationCredit({
+  variant = "light",
+  className,
+}: OrganizationCreditProps) {
+  const dark = variant === "dark";
+
+  return (
+    <div className={cn("leading-5", className)}>
+      <p
+        className={cn(
+          "text-[10px] font-bold tracking-[0.15em] uppercase",
+          dark ? "text-teal-200" : "text-[#0f5c73]",
+        )}
+      >
+        Designed, developed and managed by
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 text-sm font-bold tracking-tight sm:text-[15px]",
+          dark ? "text-white" : "text-slate-900",
+        )}
+      >
+        JES Electronics Systems Pvt Ltd
+      </p>
+    </div>
+  );
+}

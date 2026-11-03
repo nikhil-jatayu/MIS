@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { AuthGate } from "@/components/auth-gate";
-import { MisBrand } from "@/components/mis-brand";
+import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -277,8 +277,11 @@ function ChangePasswordContent() {
           </section>
         </div>
       </div>
-      <footer className="border-t border-slate-200 bg-white px-4 py-3 text-center text-[11px] text-slate-500">
-        MIS · Management Information System
+      <footer className="border-t border-slate-200 bg-white px-4 py-3 text-center">
+        <p className="text-[11px] text-slate-500">
+          MIS · Management Information System
+        </p>
+        <OrganizationCredit className="mt-1" />
       </footer>
     </div>
   );

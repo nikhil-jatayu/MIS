@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { MisBrand } from "@/components/mis-brand";
+import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import type { MessageResponse } from "@/lib/types";
@@ -112,9 +112,12 @@ export default function ForgotPasswordPage() {
             </>
           )}
         </section>
-        <p className="mt-5 text-center text-[11px] text-slate-400">
-          MIS · Management Information System
-        </p>
+        <div className="mt-5 text-center">
+          <p className="text-[11px] text-slate-400">
+            MIS · Management Information System
+          </p>
+          <OrganizationCredit className="mt-1" />
+        </div>
       </div>
     </main>
   );

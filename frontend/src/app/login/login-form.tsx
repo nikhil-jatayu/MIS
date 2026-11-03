@@ -16,8 +16,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { BrandedLoadingScreen } from "@/components/branded-loading-screen";
+import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
-import { MisBrand } from "@/components/mis-brand";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
@@ -27,6 +28,8 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
+
+const POST_LOGIN_BRAND_DURATION_MS = 1800;
 
 function safeNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -40,6 +43,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const nextPath = safeNext(searchParams.get("next"));
 
   const {
@@ -52,9 +56,25 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (isLoading || !user) return;
+    // While a submitted login is running, its submit handler owns navigation.
+    // isSubmitting remains true through the branded hand-off, preventing a
+    // competing redirect from the session-change effect.
+    if (isLoading || !user || isSubmitting || isRedirecting) return;
     router.replace(user.must_change_password ? "/change-password" : nextPath);
-  }, [isLoading, user, router, nextPath]);
+  }, [isLoading, user, isSubmitting, isRedirecting, router, nextPath]);
+
+  if (isLoading || user || isRedirecting) {
+    return (
+      <BrandedLoadingScreen
+        title={user || isRedirecting ? "Opening your workspace" : "Verifying your session"}
+        description={
+          user || isRedirecting
+            ? "Your sign-in is complete. Loading your MIS workspace and access permissions."
+            : "Checking whether you already have an active MIS session."
+        }
+      />
+    );
+  }
 
   async function onSubmit(values: LoginValues) {
     try {
@@ -62,11 +82,18 @@ export function LoginForm() {
         email: values.email.trim(),
         password: values.password,
       });
+      setIsRedirecting(true);
       toast.success(`Welcome, ${signedIn.name}`);
+      // Keep the branded hand-off visible long enough to read, without adding
+      // a long or artificial wait to the sign-in process.
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, POST_LOGIN_BRAND_DURATION_MS);
+      });
       router.replace(
         signedIn.must_change_password ? "/change-password" : nextPath,
       );
     } catch (error) {
+      setIsRedirecting(false);
       toast.error(errorMessage(error, "Unable to sign in."));
     }
   }
@@ -121,10 +148,13 @@ export function LoginForm() {
             </div>
           </div>
 
-          <p className="relative text-[11px] text-slate-500">
-            Authorised personnel only. All activity is recorded in the audit
-            trail.
-          </p>
+          <div className="relative">
+            <p className="text-[11px] text-slate-500">
+              Authorised personnel only. All activity is recorded in the audit
+              trail.
+            </p>
+            <OrganizationCredit variant="dark" className="mt-3" />
+          </div>
         </section>
 
         <section className="flex items-center justify-center bg-slate-50 px-5 py-10 sm:px-10">
@@ -233,8 +263,13 @@ export function LoginForm() {
           </div>
         </section>
       </div>
-      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-3 text-center text-[11px] text-slate-500">
-        MIS · Management Information System
+      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-4 text-center">
+        <div className="mx-auto flex w-full max-w-sm justify-center">
+          <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900/80 px-4 py-2 text-[10px] font-semibold tracking-[0.14em] text-slate-300 uppercase">
+            Management Information System
+          </span>
+        </div>
+        <OrganizationCredit variant="dark" className="mx-auto mt-3 max-w-sm lg:hidden" />
       </footer>
     </div>
   );

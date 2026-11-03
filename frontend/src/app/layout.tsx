@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     template: "%s · MIS",
   },
   description:
-    "MIS — Management Information System for project, inventory, purchasing and production operations.",
+    "MIS — Management Information System for project, inventory, purchasing and production operations. Designed, developed and managed by JES Electronics Systems Pvt Ltd.",
   applicationName: "MIS",
   icons: {
     icon: "/mis-logo.svg",
