@@ -20,7 +20,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "JES MIS"
+    app_name: str = "MIS"
     app_version: str = "1.0.0"
     environment: str = "development"
     debug: bool = False
@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 480
 
     cors_origins: str = "http://localhost:3000"
+    # Keep the existing cookie name so active user sessions are not invalidated.
     cookie_name: str = "jes_access_token"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
@@ -56,6 +57,21 @@ class Settings(BaseSettings):
     login_lock_minutes: int = 15
     password_min_length: int = 8
     bcrypt_rounds: int = 12
+
+    frontend_base_url: str = "http://localhost:3000"
+    password_reset_token_expire_minutes: int = 30
+    password_reset_max_requests: int = 5
+    password_reset_window_minutes: int = 15
+
+    smtp_host: str | None = None
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_from_name: str = "MIS"
+    smtp_starttls: bool = False
+    smtp_use_ssl: bool = False
+    smtp_timeout_seconds: int = 10
 
     default_page_size: int = 20
     max_page_size: int = 100
@@ -102,6 +118,18 @@ class Settings(BaseSettings):
             raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be at least 5")
         if not 4 <= self.bcrypt_rounds <= 16:
             raise ValueError("BCRYPT_ROUNDS must be between 4 and 16")
+        if self.password_reset_token_expire_minutes < 5:
+            raise ValueError("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES must be at least 5")
+        if self.password_reset_max_requests < 1 or self.password_reset_window_minutes < 1:
+            raise ValueError("Password-reset rate-limit settings must be positive")
+        if self.smtp_use_ssl and self.smtp_starttls:
+            raise ValueError("SMTP_USE_SSL and SMTP_STARTTLS cannot both be enabled")
+        if bool(self.smtp_username) != bool(self.smtp_password):
+            raise ValueError("SMTP_USERNAME and SMTP_PASSWORD must be configured together")
+        if self.smtp_port < 1 or self.smtp_port > 65535:
+            raise ValueError("SMTP_PORT must be between 1 and 65535")
+        if self.smtp_timeout_seconds < 1:
+            raise ValueError("SMTP_TIMEOUT_SECONDS must be positive")
         return self
 
 

@@ -87,3 +87,14 @@ class PasswordResetRequest(ORMModel):
     new_password: str = Field(min_length=8, max_length=128)
 
     _validate_new_password = field_validator("new_password")(_validate_password)
+
+
+class ForgotPasswordRequest(ORMModel):
+    email: EmailStr
+
+
+class ResetPasswordWithTokenRequest(ORMModel):
+    token: str = Field(min_length=40, max_length=200)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    _validate_new_password = field_validator("new_password")(_validate_password)

@@ -6,14 +6,14 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "JES MIS",
-    template: "%s · JES MIS",
+    default: "MIS",
+    template: "%s · MIS",
   },
   description:
-    "R&D and Production Management Information System for JES Electronics Systems Pvt Ltd.",
-  applicationName: "JES MIS",
+    "MIS — Management Information System for project, inventory, purchasing and production operations. Designed, developed and managed by JES Electronics Systems Pvt Ltd.",
+  applicationName: "MIS",
   icons: {
-    icon: "/jes-logo.png",
+    icon: "/mis-logo.svg",
   },
 };
 

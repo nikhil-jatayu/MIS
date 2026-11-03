@@ -9,13 +9,15 @@ import {
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import Image from "next/image";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { BrandedLoadingScreen } from "@/components/branded-loading-screen";
+import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -26,6 +28,8 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
+
+const POST_LOGIN_BRAND_DURATION_MS = 1800;
 
 function safeNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -39,6 +43,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const nextPath = safeNext(searchParams.get("next"));
 
   const {
@@ -51,9 +56,25 @@ export function LoginForm() {
   });
 
   useEffect(() => {
-    if (isLoading || !user) return;
+    // While a submitted login is running, its submit handler owns navigation.
+    // isSubmitting remains true through the branded hand-off, preventing a
+    // competing redirect from the session-change effect.
+    if (isLoading || !user || isSubmitting || isRedirecting) return;
     router.replace(user.must_change_password ? "/change-password" : nextPath);
-  }, [isLoading, user, router, nextPath]);
+  }, [isLoading, user, isSubmitting, isRedirecting, router, nextPath]);
+
+  if (isLoading || user || isRedirecting) {
+    return (
+      <BrandedLoadingScreen
+        title={user || isRedirecting ? "Opening your workspace" : "Verifying your session"}
+        description={
+          user || isRedirecting
+            ? "Your sign-in is complete. Loading your MIS workspace and access permissions."
+            : "Checking whether you already have an active MIS session."
+        }
+      />
+    );
+  }
 
   async function onSubmit(values: LoginValues) {
     try {
@@ -61,11 +82,18 @@ export function LoginForm() {
         email: values.email.trim(),
         password: values.password,
       });
+      setIsRedirecting(true);
       toast.success(`Welcome, ${signedIn.name}`);
+      // Keep the branded hand-off visible long enough to read, without adding
+      // a long or artificial wait to the sign-in process.
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, POST_LOGIN_BRAND_DURATION_MS);
+      });
       router.replace(
         signedIn.must_change_password ? "/change-password" : nextPath,
       );
     } catch (error) {
+      setIsRedirecting(false);
       toast.error(errorMessage(error, "Unable to sign in."));
     }
   }
@@ -83,25 +111,7 @@ export function LoginForm() {
             }}
           />
           <div className="relative">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-2 shadow-lg">
-                <Image
-                  src="/jes-logo.png"
-                  alt="JES Electronics Systems logo"
-                  width={40}
-                  height={40}
-                  priority
-                />
-              </div>
-              <div>
-                <p className="text-lg font-bold tracking-wide">
-                  JES Electronics Systems
-                </p>
-                <p className="text-[10px] font-semibold tracking-[0.22em] text-teal-200/80 uppercase">
-                  Pvt Ltd · Management Information System
-                </p>
-              </div>
-            </div>
+            <MisBrand variant="dark" size="lg" />
           </div>
 
           <div className="relative max-w-xl">
@@ -138,32 +148,19 @@ export function LoginForm() {
             </div>
           </div>
 
-          <p className="relative text-[11px] text-slate-500">
-            Authorised personnel only. All activity is recorded in the audit
-            trail.
-          </p>
+          <div className="relative">
+            <p className="text-[11px] text-slate-500">
+              Authorised personnel only. All activity is recorded in the audit
+              trail.
+            </p>
+            <OrganizationCredit variant="dark" className="mt-3" />
+          </div>
         </section>
 
         <section className="flex items-center justify-center bg-slate-50 px-5 py-10 sm:px-10">
           <div className="w-full max-w-md">
-            <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#082f3d] p-1.5">
-                <Image
-                  src="/jes-logo.png"
-                  alt="JES Electronics Systems logo"
-                  width={36}
-                  height={36}
-                  priority
-                />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-900">
-                  JES Electronics Systems
-                </p>
-                <p className="text-[9px] font-semibold tracking-[0.18em] text-slate-500 uppercase">
-                  Pvt Ltd · MIS
-                </p>
-              </div>
+            <div className="mb-8 lg:hidden">
+              <MisBrand size="md" />
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 sm:p-8">
@@ -175,7 +172,7 @@ export function LoginForm() {
                   Sign in to your workspace
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Use your Office People ID (email address) and password.
+                  Sign in using your registered email address and password.
                 </p>
               </div>
 
@@ -185,7 +182,7 @@ export function LoginForm() {
                 noValidate
               >
                 <Field
-                  label="Office People ID"
+                  label="Email Address"
                   htmlFor="email"
                   error={errors.email?.message}
                 >
@@ -194,8 +191,8 @@ export function LoginForm() {
                     <Input
                       id="email"
                       type="email"
-                      autoComplete="username"
-                      placeholder="name@jatayues.com"
+                      autoComplete="email"
+                      placeholder="name@company.com"
                       className="pl-9"
                       {...register("email")}
                     />
@@ -234,6 +231,15 @@ export function LoginForm() {
                   </div>
                 </Field>
 
+                <div className="-mt-1 flex justify-end">
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs font-semibold text-[#0f5c73] hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full"
@@ -257,8 +263,13 @@ export function LoginForm() {
           </div>
         </section>
       </div>
-      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-3 text-center text-[11px] text-slate-500">
-        Made and managed by JES Electronics Systems Pvt Ltd
+      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-4 text-center">
+        <div className="mx-auto flex w-full max-w-sm justify-center">
+          <span className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900/80 px-4 py-2 text-[10px] font-semibold tracking-[0.14em] text-slate-300 uppercase">
+            Management Information System
+          </span>
+        </div>
+        <OrganizationCredit variant="dark" className="mx-auto mt-3 max-w-sm lg:hidden" />
       </footer>
     </div>
   );
