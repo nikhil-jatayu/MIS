@@ -11,6 +11,7 @@ import {
   CircleDashed,
   ClipboardList,
   Clock3,
+  Factory,
   FolderKanban,
   PackageOpen,
   Plus,
@@ -101,7 +102,7 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, recent_projects, recent_alerts } = query.data;
+  const { stats, recent_projects, recent_alerts, production } = query.data;
   const roleCopy = {
     SUPER_ADMIN: {
       eyebrow: "Executive overview",
@@ -325,6 +326,92 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      <Card className="mt-6">
+        <CardHeader
+          title="Production overview"
+          description={`Month to date · ${formatDate(production.period_start)} – ${formatDate(production.period_end)}`}
+          action={
+            <Link
+              href="/production/summary"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#0f5c73] hover:underline"
+            >
+              Open production
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          }
+        />
+        <div className="grid gap-3 border-b border-slate-100 p-4 sm:grid-cols-3">
+          <DashboardMetric
+            label="Production entries"
+            value={production.entries_count}
+            icon={Factory}
+            href="/production/log"
+          />
+          <DashboardMetric
+            label="Open actions"
+            value={production.open_actions}
+            icon={ClipboardList}
+            href="/production/actions"
+          />
+          <DashboardMetric
+            label="Overdue actions"
+            value={production.overdue_actions}
+            icon={AlertTriangle}
+            href="/production/actions?overdue=1"
+          />
+        </div>
+        {production.units.length === 0 ? (
+          <div className="px-5 py-6 text-center">
+            <Factory className="mx-auto h-5 w-5 text-slate-300" />
+            <p className="mt-2 text-xs font-semibold text-slate-700">
+              No production entries this month
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Production quantities and quality indicators will appear here after entries are recorded.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[680px] text-left text-xs">
+              <thead className="bg-slate-50 text-[10px] tracking-wide text-slate-500 uppercase">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Unit</th>
+                  <th className="px-4 py-3 text-right font-semibold">Entries</th>
+                  <th className="px-4 py-3 text-right font-semibold">Planned</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actual</th>
+                  <th className="px-4 py-3 text-right font-semibold">First-pass yield</th>
+                  <th className="px-5 py-3 text-right font-semibold">Rework rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {production.units.map((unit) => (
+                  <tr key={unit.unit_of_measure}>
+                    <td className="px-5 py-3 font-semibold text-slate-800">
+                      {unit.unit_of_measure}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                      {unit.entries_count}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                      {formatProductionQuantity(unit.planned_quantity)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-800">
+                      {formatProductionQuantity(unit.actual_quantity)}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-600">
+                      {formatPercent(unit.first_pass_yield_percent)}
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums text-slate-600">
+                      {formatPercent(unit.rework_rate_percent)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.45fr_1fr]">
         <Card>
           <CardHeader
@@ -501,6 +588,45 @@ export default function DashboardPage() {
       </Card>
     </div>
   );
+}
+
+function DashboardMetric({
+  label,
+  value,
+  icon: Icon,
+  href,
+}: {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-3 transition hover:border-teal-200 hover:bg-teal-50/40"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[#0f5c73] shadow-sm">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span>
+        <span className="block text-lg leading-5 font-bold tabular-nums text-slate-900">
+          {value}
+        </span>
+        <span className="mt-0.5 block text-[10px] text-slate-500">{label}</span>
+      </span>
+    </Link>
+  );
+}
+
+function formatProductionQuantity(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 3,
+  }).format(value);
+}
+
+function formatPercent(value: number | null) {
+  return value === null ? "—" : `${value.toFixed(2)}%`;
 }
 
 function StatCard({ stat }: { stat: StatDefinition }) {

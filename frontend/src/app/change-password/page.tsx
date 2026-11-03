@@ -9,7 +9,6 @@ import {
   KeyRound,
   ShieldAlert,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,6 +17,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 
 import { AuthGate } from "@/components/auth-gate";
+import { MisBrand } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -96,7 +96,7 @@ function ChangePasswordContent() {
         current_password: values.current_password,
         new_password: values.new_password,
       });
-      toast.success("Password updated. Welcome to JES MIS.");
+      toast.success("Password updated. Welcome to MIS.");
       router.replace("/dashboard");
     } catch (error) {
       toast.error(errorMessage(error, "Unable to update your password."));
@@ -118,19 +118,7 @@ function ChangePasswordContent() {
               }}
             />
             <div className="relative">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white p-2">
-                <Image
-                  src="/jes-logo.png"
-                  alt="JES Electronics Systems logo"
-                  width={40}
-                  height={40}
-                  priority
-                />
-              </div>
-              <p className="mt-4 text-lg font-bold">JES Electronics Systems</p>
-              <p className="text-[10px] tracking-[0.2em] text-teal-200/80 uppercase">
-                Pvt Ltd · MIS
-              </p>
+              <MisBrand variant="dark" size="lg" />
             </div>
 
             <div className="relative">
@@ -152,13 +140,7 @@ function ChangePasswordContent() {
           <section className="p-6 sm:p-9">
             <div className="flex items-center justify-between gap-3">
               <div className="lg:hidden">
-                <Image
-                  src="/jes-logo.png"
-                  alt="JES Electronics Systems logo"
-                  width={40}
-                  height={40}
-                  priority
-                />
+                <MisBrand size="md" />
               </div>
               {!forced ? (
                 <Link
@@ -296,7 +278,7 @@ function ChangePasswordContent() {
         </div>
       </div>
       <footer className="border-t border-slate-200 bg-white px-4 py-3 text-center text-[11px] text-slate-500">
-        Made and managed by JES Electronics Systems Pvt Ltd
+        MIS · Management Information System
       </footer>
     </div>
   );

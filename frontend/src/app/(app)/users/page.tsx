@@ -133,7 +133,7 @@ function UsersContent() {
       <PageHeader
         eyebrow="Administration"
         title="Users"
-        description="Create Office People IDs, assign roles, deactivate access, and reset temporary passwords."
+        description="Create user accounts with email addresses, assign roles, deactivate access, and reset temporary passwords."
         actions={
           <Button onClick={() => setAction({ type: "create" })}>
             <Plus className="h-4 w-4" />
@@ -411,7 +411,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
           <Input id="new-user-name" placeholder="e.g. Priya Sharma" {...register("name")} />
         </Field>
         <Field
-          label="Office People ID (email)"
+          label="Email Address"
           htmlFor="new-user-email"
           error={errors.email?.message}
           required
@@ -419,7 +419,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
           <Input
             id="new-user-email"
             type="email"
-            placeholder="name@jatayues.com"
+            placeholder="name@company.com"
             {...register("email")}
           />
         </Field>

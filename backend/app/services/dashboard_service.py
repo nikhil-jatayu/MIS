@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.enums import ACTIVE_PROJECT_STATUSES, ProjectStatus, PurchaseRequestStatus, UserRole
 from app.models.inventory import InventoryItem
+from app.models.production import ProductionAction, ProductionEntry
 from app.models.project import Project, ProjectMember
 from app.models.purchase import PurchaseRequest
 from app.models.user import User
 from app.schemas.alert import AlertRead
-from app.schemas.dashboard import DashboardStats, DashboardSummary
+from app.schemas.dashboard import (
+    DashboardProductionSummary,
+    DashboardStats,
+    DashboardSummary,
+    ProductionUnitDashboard,
+)
 from app.schemas.project import ProjectRead
 from app.services import alert_service
 from app.services.project_service import project_load_options
@@ -17,6 +25,81 @@ from app.services.project_service import project_load_options
 
 def _count(db: Session, statement) -> int:
     return int(db.scalar(statement) or 0)
+
+
+def build_production_summary(db: Session) -> DashboardProductionSummary:
+    today = date.today()
+    period_start = today.replace(day=1)
+    grouped = db.execute(
+        select(
+            ProductionEntry.unit_of_measure,
+            func.count(ProductionEntry.id),
+            func.coalesce(func.sum(ProductionEntry.planned_quantity), 0),
+            func.coalesce(func.sum(ProductionEntry.actual_quantity), 0),
+            func.coalesce(func.sum(ProductionEntry.accepted_quantity), 0),
+            func.coalesce(func.sum(ProductionEntry.rework_quantity), 0),
+        )
+        .where(
+            ProductionEntry.production_date >= period_start,
+            ProductionEntry.production_date <= today,
+        )
+        .group_by(ProductionEntry.unit_of_measure)
+        .order_by(ProductionEntry.unit_of_measure)
+    ).all()
+
+    units: list[ProductionUnitDashboard] = []
+    entries_count = 0
+    for unit, count, planned, actual, accepted, rework in grouped:
+        count = int(count)
+        entries_count += count
+        planned_value = float(planned or 0)
+        actual_value = float(actual or 0)
+        accepted_value = float(accepted or 0)
+        rework_value = float(rework or 0)
+        units.append(
+            ProductionUnitDashboard(
+                unit_of_measure=unit,
+                entries_count=count,
+                planned_quantity=planned_value,
+                actual_quantity=actual_value,
+                accepted_first_pass_quantity=accepted_value,
+                rework_quantity=rework_value,
+                plan_achievement_percent=(
+                    round(actual_value * 100 / planned_value, 2) if planned_value else None
+                ),
+                first_pass_yield_percent=(
+                    round(accepted_value * 100 / actual_value, 2) if actual_value else None
+                ),
+                rework_rate_percent=(
+                    round(rework_value * 100 / actual_value, 2) if actual_value else None
+                ),
+            )
+        )
+
+    open_statuses = ("OPEN", "IN_PROGRESS", "ON_HOLD")
+    open_actions = _count(
+        db,
+        select(func.count())
+        .select_from(ProductionAction)
+        .where(ProductionAction.status.in_(open_statuses)),
+    )
+    overdue_actions = _count(
+        db,
+        select(func.count())
+        .select_from(ProductionAction)
+        .where(
+            ProductionAction.status.in_(open_statuses),
+            ProductionAction.deadline < today,
+        ),
+    )
+    return DashboardProductionSummary(
+        period_start=period_start,
+        period_end=today,
+        entries_count=entries_count,
+        open_actions=open_actions,
+        overdue_actions=overdue_actions,
+        units=units,
+    )
 
 
 def build_summary(db: Session, *, user: User) -> DashboardSummary:
@@ -81,4 +164,5 @@ def build_summary(db: Session, *, user: User) -> DashboardSummary:
         stats=stats,
         recent_projects=[ProjectRead.model_validate(project) for project in recent_projects],
         recent_alerts=recent_alerts,
+        production=build_production_summary(db),
     )

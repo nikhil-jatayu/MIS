@@ -199,11 +199,33 @@ export interface DashboardStats {
   inventory_items: number;
 }
 
+export interface DashboardProductionUnit {
+  unit_of_measure: string;
+  entries_count: number;
+  planned_quantity: number;
+  actual_quantity: number;
+  accepted_first_pass_quantity: number;
+  rework_quantity: number;
+  plan_achievement_percent: number | null;
+  first_pass_yield_percent: number | null;
+  rework_rate_percent: number | null;
+}
+
+export interface DashboardProductionSummary {
+  period_start: string;
+  period_end: string;
+  entries_count: number;
+  open_actions: number;
+  overdue_actions: number;
+  units: DashboardProductionUnit[];
+}
+
 export interface DashboardSummary {
   role: UserRole;
   stats: DashboardStats;
   recent_projects: Project[];
   recent_alerts: Alert[];
+  production: DashboardProductionSummary;
 }
 
 export interface AlertRunResult {

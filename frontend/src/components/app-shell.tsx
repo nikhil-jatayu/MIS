@@ -21,13 +21,13 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { AppShellSkeleton } from "@/components/app-shell-skeleton";
+import { MisBrand } from "@/components/mis-brand";
 import { AuthGate } from "@/components/auth-gate";
 import { Avatar, Badge } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
@@ -182,7 +182,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {pageTitle(pathname)}
               </p>
               <p className="hidden text-[11px] text-slate-500 sm:block">
-                R&D and Production Management Information System
+                Management Information System
               </p>
             </div>
           </div>
@@ -220,7 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         <footer className="border-t border-slate-200 bg-white px-4 py-4 text-center text-xs text-slate-500 sm:px-6 lg:px-8">
-          Made and managed by JES Electronics Systems Pvt Ltd
+          MIS · Management Information System
         </footer>
       </div>
     </div>
@@ -243,24 +243,8 @@ function SidebarContent({
   const { user } = useAuth();
   return (
     <>
-      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-5">
-        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white p-1.5">
-          <Image
-            src="/jes-logo.png"
-            alt="JES Electronics Systems logo"
-            width={36}
-            height={36}
-            priority
-          />
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-bold tracking-wide text-white">
-            JES Electronics
-          </p>
-          <p className="text-[10px] tracking-[0.14em] text-teal-200/80 uppercase">
-            Systems Pvt Ltd · MIS
-          </p>
-        </div>
+      <div className="flex h-20 items-center border-b border-white/10 px-5">
+        <MisBrand variant="dark" size="md" />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

@@ -8,7 +8,9 @@ from app.schemas.common import MessageResponse
 from app.schemas.user import (
     AuthResponse,
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginRequest,
+    ResetPasswordWithTokenRequest,
     UserRead,
 )
 from app.services import auth_service
@@ -36,6 +38,39 @@ def login(
         expires_in=expires_in,
         user=UserRead.model_validate(user),
     )
+
+
+@router.post("/forgot-password", response_model=MessageResponse, status_code=202)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    request: Request,
+    db: DatabaseSession,
+) -> MessageResponse:
+    client_host = request.client.host if request.client else "unknown"
+    auth_service.request_password_reset(
+        db,
+        email=str(payload.email),
+        client_host=client_host,
+    )
+    return MessageResponse(
+        message=(
+            "If an account with that email address exists, "
+            "password-reset instructions will be sent."
+        )
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password_with_token(
+    payload: ResetPasswordWithTokenRequest,
+    db: DatabaseSession,
+) -> MessageResponse:
+    auth_service.complete_password_reset(
+        db,
+        token=payload.token,
+        new_password=payload.new_password,
+    )
+    return MessageResponse(message="Password updated. You can now sign in with your new password.")
 
 
 @router.post("/logout", response_model=MessageResponse)
