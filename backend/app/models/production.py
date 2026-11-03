@@ -17,7 +17,6 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
-    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

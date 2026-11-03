@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -104,9 +104,7 @@ def list_entries(
     )
 
 
-def create_entry(
-    db: Session, *, actor: User, payload: ProductionEntryCreate
-) -> ProductionEntry:
+def create_entry(db: Session, *, actor: User, payload: ProductionEntryCreate) -> ProductionEntry:
     _ensure_project_access(db, payload.project_id, actor)
     entry = ProductionEntry(**payload.model_dump(), created_by=actor.id)
     db.add(entry)
@@ -144,10 +142,7 @@ def update_entry(
         raise UnprocessableError("Accepted quantity cannot exceed actual quantity")
     if new_rework > new_actual:
         raise UnprocessableError("Rework quantity cannot exceed actual quantity")
-    before = {
-        key: getattr(entry, key)
-        for key in changes
-    }
+    before = {key: getattr(entry, key) for key in changes}
     for key, value in changes.items():
         setattr(entry, key, value)
     db.flush()
@@ -200,9 +195,7 @@ def list_actions(
     )
 
 
-def create_action(
-    db: Session, *, actor: User, payload: ProductionActionCreate
-) -> ProductionAction:
+def create_action(db: Session, *, actor: User, payload: ProductionActionCreate) -> ProductionAction:
     if payload.responsible_user_id:
         responsible = db.get(User, payload.responsible_user_id)
         if not responsible or not responsible.is_active:
@@ -211,7 +204,9 @@ def create_action(
     if payload.production_entry_id:
         entry = get_entry(db, payload.production_entry_id)
         if project_id and entry.project_id and project_id != entry.project_id:
-            raise UnprocessableError("Action project must match the linked production entry project")
+            raise UnprocessableError(
+                "Action project must match the linked production entry project"
+            )
         if project_id is None:
             project_id = entry.project_id
     _ensure_project_access(db, project_id, actor)
@@ -246,11 +241,10 @@ def update_action(
     db: Session, *, actor: User, action_id: UUID, payload: ProductionActionUpdate
 ) -> ProductionAction:
     action = get_action(db, action_id)
-    if (
-        actor.id not in {action.created_by, action.responsible_user_id}
-        and not _is_admin(actor)
-    ):
-        raise ForbiddenError("Only the action creator, assigned owner or an Admin can update this action")
+    if actor.id not in {action.created_by, action.responsible_user_id} and not _is_admin(actor):
+        raise ForbiddenError(
+            "Only the action creator, assigned owner or an Admin can update this action"
+        )
     changes = payload.model_dump(exclude_unset=True)
     if "responsible_user_id" in changes and not _is_admin(actor):
         if changes["responsible_user_id"] != action.responsible_user_id:
@@ -263,7 +257,7 @@ def update_action(
     for key, value in changes.items():
         setattr(action, key, value)
     if changes.get("status") == "CLOSED":
-        action.closed_at = datetime.now(timezone.utc)
+        action.closed_at = datetime.now(UTC)
         action.closed_by_user_id = actor.id
     elif changes.get("status") and changes["status"] != "CLOSED":
         action.closed_at = None
@@ -312,7 +306,10 @@ def upsert_monthly_review(
         db.add(review)
         action_name = "CREATE"
     else:
-        before = {"management_summary": review.management_summary, "reviewed_at": review.reviewed_at}
+        before = {
+            "management_summary": review.management_summary,
+            "reviewed_at": review.reviewed_at,
+        }
         if review.management_summary != payload.management_summary:
             review.reviewed_by_user_id = None
             review.reviewed_at = None
@@ -320,7 +317,7 @@ def upsert_monthly_review(
         action_name = "UPDATE"
     if payload.mark_reviewed:
         review.reviewed_by_user_id = actor.id
-        review.reviewed_at = datetime.now(timezone.utc)
+        review.reviewed_at = datetime.now(UTC)
     db.flush()
     audit_service.record(
         db,
@@ -332,9 +329,7 @@ def upsert_monthly_review(
         after={"year": year, "month": month, "mark_reviewed": payload.mark_reviewed},
     )
     db.commit()
-    return db.scalar(
-        _review_query().where(ProductionMonthlyReview.id == review.id)
-    )
+    return db.scalar(_review_query().where(ProductionMonthlyReview.id == review.id))
 
 
 def get_monthly_summary(db: Session, *, year: int, month: int) -> ProductionSummaryRead:
@@ -385,30 +380,39 @@ def get_monthly_summary(db: Session, *, year: int, month: int) -> ProductionSumm
             )
         )
 
-    open_actions = db.scalar(
-        select(func.count(ProductionAction.id)).where(
-            ProductionAction.status.in_(OPEN_STATUSES),
-            ProductionAction.date_raised <= end,
+    open_actions = (
+        db.scalar(
+            select(func.count(ProductionAction.id)).where(
+                ProductionAction.status.in_(OPEN_STATUSES),
+                ProductionAction.date_raised <= end,
+            )
         )
-    ) or 0
-    overdue_actions = db.scalar(
-        select(func.count(ProductionAction.id)).where(
-            ProductionAction.status != "CLOSED", ProductionAction.deadline < date.today()
+        or 0
+    )
+    overdue_actions = (
+        db.scalar(
+            select(func.count(ProductionAction.id)).where(
+                ProductionAction.status != "CLOSED", ProductionAction.deadline < date.today()
+            )
         )
-    ) or 0
-    month_start = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
+        or 0
+    )
+    month_start = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
     next_month = datetime.combine(
         date(year + (1 if month == 12 else 0), 1 if month == 12 else month + 1, 1),
         datetime.min.time(),
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
-    closed_this_month = db.scalar(
-        select(func.count(ProductionAction.id)).where(
-            ProductionAction.status == "CLOSED",
-            ProductionAction.closed_at >= month_start,
-            ProductionAction.closed_at < next_month,
+    closed_this_month = (
+        db.scalar(
+            select(func.count(ProductionAction.id)).where(
+                ProductionAction.status == "CLOSED",
+                ProductionAction.closed_at >= month_start,
+                ProductionAction.closed_at < next_month,
+            )
         )
-    ) or 0
+        or 0
+    )
     review = get_monthly_review(db, year=year, month=month)
     review_read = ProductionMonthlyReviewRead.model_validate(review) if review else None
     return ProductionSummaryRead(

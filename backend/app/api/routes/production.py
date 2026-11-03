@@ -7,8 +7,8 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select
 
 from app.core.deps import AdminUser, CurrentUser, DatabaseSession, Pagination
-from app.schemas.common import Page
 from app.models.user import User
+from app.schemas.common import Page
 from app.schemas.production import (
     ProductionActionCreate,
     ProductionActionRead,
@@ -27,12 +27,8 @@ router = APIRouter(prefix="/production", tags=["Production"])
 
 
 @router.get("/assignees", response_model=list[ProductionAssigneeRead])
-def list_production_assignees(
-    db: DatabaseSession, _: CurrentUser
-) -> list[ProductionAssigneeRead]:
-    users = db.scalars(
-        select(User).where(User.is_active.is_(True)).order_by(User.name.asc())
-    ).all()
+def list_production_assignees(db: DatabaseSession, _: CurrentUser) -> list[ProductionAssigneeRead]:
+    users = db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name.asc())).all()
     return [ProductionAssigneeRead(id=user.id, name=user.name) for user in users]
 
 
