@@ -8,7 +8,7 @@ const API_URL = process.env.PLAYWRIGHT_API_URL ?? "http://localhost:8000";
 
 async function signIn(page: Page, email: string) {
   await page.goto("/login");
-  await page.getByLabel("Office People ID").fill(email);
+  await page.getByLabel("Email Address").fill(email);
   await page.locator("#password").fill(E2E_PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -30,6 +30,35 @@ test.describe("authenticated MIS workspace", () => {
     // The dashboard is client-rendered; it must not trigger an instant-navigation
     // validation error in the dev overlay.
     await expect(page.getByText(/could not validate that a segment/i)).toHaveCount(0);
+  });
+
+  test("sign out requires confirmation", async ({ page }) => {
+    await signIn(page, ADMIN_EMAIL);
+
+    const logoutRequests: number[] = [];
+    page.on("request", (request) => {
+      if (
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.endsWith("/auth/logout")
+      ) {
+        logoutRequests.push(1);
+      }
+    });
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    const dialog = page.getByRole("dialog", { name: "Sign out?" });
+    await expect(dialog).toBeVisible();
+
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    expect(logoutRequests).toHaveLength(0);
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    expect(logoutRequests).toHaveLength(1);
   });
 
   test("super admin can reach every management section", async ({ page }) => {
@@ -84,7 +113,7 @@ test.describe("authenticated MIS workspace", () => {
     page,
   }) => {
     await page.goto("/login");
-    await page.getByLabel("Office People ID").fill(FORCED_EMAIL);
+    await page.getByLabel("Email Address").fill(FORCED_EMAIL);
     await page.locator("#password").fill(E2E_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
 

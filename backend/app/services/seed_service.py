@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
+from app.core.security import hash_password, validate_password_strength
 from app.models.enums import UserRole
 from app.models.setting import Setting
 from app.models.user import User
@@ -15,21 +15,28 @@ from app.services import settings_service
 logger = logging.getLogger(__name__)
 
 SEED_SUPER_ADMINS = (
-    ("Ashmant", "ashmant@jatayues.com", "ashmant@123"),
-    ("Ratna", "ratna@jatayues.com", "ratna@123"),
+    ("Ashmant", "ashmant@jatayues.com", "Ashmant@123"),
+    ("Ratna", "ratna@jatayues.com", "Ratna@123"),
 )
+
+
+def _capitalise_first_character(value: str) -> str:
+    """Return a trimmed name with its first character capitalised."""
+    value = value.strip()
+    return value[:1].upper() + value[1:]
 
 
 def seed_database(db: Session) -> dict[str, Any]:
     created = 0
     for name, email, password in SEED_SUPER_ADMINS:
+        validate_password_strength(password)
         existing = db.scalar(select(User).where(func.lower(User.email) == email.lower()))
         if existing:
             logger.info("Seed user already exists: %s", email)
             continue
         db.add(
             User(
-                name=name,
+                name=_capitalise_first_character(name),
                 email=email.lower(),
                 role=UserRole.SUPER_ADMIN,
                 password_hash=hash_password(password),
