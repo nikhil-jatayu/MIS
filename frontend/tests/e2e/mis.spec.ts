@@ -24,7 +24,7 @@ test.describe("authenticated MIS workspace", () => {
     await expect(
       page
         .locator("footer:visible")
-        .filter({ hasText: "Made and managed by JES Electronics Systems Pvt Ltd" }),
+        .filter({ hasText: "Made and managed by JES Electronic Systems Pvt Ltd" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
     // The dashboard is client-rendered; it must not trigger an instant-navigation

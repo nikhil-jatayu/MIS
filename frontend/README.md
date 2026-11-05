@@ -1,6 +1,6 @@
 # JES MIS frontend
 
-Next.js 16 App Router frontend for the JES Electronics Systems Pvt Ltd MIS.
+Next.js 16 App Router frontend for the JES Electronic Systems Pvt Ltd MIS.
 See the repository [README](../README.md) for the full setup, architecture, and
 role matrix.
 

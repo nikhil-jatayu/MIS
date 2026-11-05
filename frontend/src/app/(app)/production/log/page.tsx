@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { TableRowsSkeleton } from "@/components/loading-skeletons";
 import {
   AlertBanner,
   Button,
@@ -121,7 +122,7 @@ export default function ProductionLogPage() {
           <p className="mt-1 text-xs text-slate-500">{entriesQuery.data?.total ?? 0} records</p>
         </div>
         {entriesQuery.isError ? <div className="p-5"><AlertBanner tone="danger">{errorMessage(entriesQuery.error)}</AlertBanner></div> : null}
-        {entriesQuery.isLoading ? <p className="p-5 text-sm text-slate-500">Loading production records…</p> : null}
+        {entriesQuery.isLoading ? <TableRowsSkeleton rows={5} columns={11} /> : null}
         {entriesQuery.data && entriesQuery.data.items.length === 0 ? <EmptyState title="No production entries yet" description="Use the form above to record the first production entry." /> : null}
         {entriesQuery.data && entriesQuery.data.items.length > 0 ? (
           <>

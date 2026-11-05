@@ -16,7 +16,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { BrandedLoadingScreen } from "@/components/branded-loading-screen";
+import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
 import { Button, Field, Input } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
@@ -28,8 +28,6 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
-
-const POST_LOGIN_BRAND_DURATION_MS = 1800;
 
 function safeNext(value: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -64,16 +62,7 @@ export function LoginForm() {
   }, [isLoading, user, isSubmitting, isRedirecting, router, nextPath]);
 
   if (isLoading || user || isRedirecting) {
-    return (
-      <BrandedLoadingScreen
-        title={user || isRedirecting ? "Opening your workspace" : "Verifying your session"}
-        description={
-          user || isRedirecting
-            ? "Your sign-in is complete. Loading your MIS workspace and access permissions."
-            : "Checking whether you already have an active MIS session."
-        }
-      />
-    );
+    return <AppShellSkeleton />;
   }
 
   async function onSubmit(values: LoginValues) {
@@ -84,11 +73,6 @@ export function LoginForm() {
       });
       setIsRedirecting(true);
       toast.success(`Welcome, ${signedIn.name}`);
-      // Keep the branded hand-off visible long enough to read, without adding
-      // a long or artificial wait to the sign-in process.
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, POST_LOGIN_BRAND_DURATION_MS);
-      });
       router.replace(
         signedIn.must_change_password ? "/change-password" : nextPath,
       );

@@ -14,6 +14,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { ProjectCard } from "@/components/project-card";
+import { ProjectsGridSkeleton } from "@/components/loading-skeletons";
 import {
   AlertBanner,
   Button,
@@ -24,7 +25,6 @@ import {
   PageHeader,
   Pagination,
   Select,
-  Skeleton,
   Spinner,
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
@@ -305,11 +305,7 @@ export function ProjectsView() {
           {errorMessage(query.error)}
         </AlertBanner>
       ) : query.isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-80" />
-          ))}
-        </div>
+        <ProjectsGridSkeleton />
       ) : !query.data?.items.length ? (
         <Card>
           <EmptyState

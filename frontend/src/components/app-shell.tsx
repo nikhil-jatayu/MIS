@@ -29,7 +29,6 @@ import { toast } from "sonner";
 
 import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
-import { AuthGate } from "@/components/auth-gate";
 import { Avatar, Badge } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -105,11 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (isLoading || !user) {
-    return (
-      <AuthGate>
-        <AppShellSkeleton />
-      </AuthGate>
-    );
+    return <AppShellSkeleton />;
   }
 
   const navigation = NAVIGATION.filter(

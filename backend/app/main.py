@@ -41,11 +41,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="MIS — Management Information System | JES Electronics Systems Pvt Ltd",
+    title="MIS — Management Information System | JES Electronic Systems Pvt Ltd",
     description=(
         "Management Information System: projects, inventory, "
         "purchase requests, testing, time-counter alerts and audit trail. "
-        "Designed, developed and managed by JES Electronics Systems Pvt Ltd."
+        "Designed, developed and managed by JES Electronic Systems Pvt Ltd."
     ),
     version=settings.app_version,
     lifespan=lifespan,

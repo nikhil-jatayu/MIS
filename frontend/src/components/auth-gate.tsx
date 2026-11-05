@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-import { BrandedLoadingScreen } from "@/components/branded-loading-screen";
+import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 import { Button, Card } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/lib/types";
@@ -40,29 +40,8 @@ export function AuthGate({
     }
   }, [isLoading, user, requirePasswordChanged, router, pathname]);
 
-  if (isLoading) {
-    return (
-      <BrandedLoadingScreen
-        title="Verifying your session"
-        description="Checking your account and preparing your MIS workspace."
-      />
-    );
-  }
-  if (!user) {
-    return (
-      <BrandedLoadingScreen
-        title="Opening secure sign-in"
-        description="Redirecting you to the MIS sign-in page."
-      />
-    );
-  }
-  if (requirePasswordChanged && user.must_change_password) {
-    return (
-      <BrandedLoadingScreen
-        title="One more security step"
-        description="Taking you to the required password update."
-      />
-    );
+  if (isLoading || !user || (requirePasswordChanged && user.must_change_password)) {
+    return <AppShellSkeleton />;
   }
   return <>{children}</>;
 }
