@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { ProductionSummarySkeleton } from "@/components/loading-skeletons";
 import { AlertBanner, Button, Card, Field, PageHeader, Textarea } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -79,9 +80,7 @@ export default function ProductionSummaryPage() {
         </AlertBanner>
       ) : null}
       {saveError ? <AlertBanner tone="danger" title="Could not save management review">{saveError}</AlertBanner> : null}
-      {summaryQuery.isLoading ? (
-        <Card className="p-6 text-sm text-slate-500">Loading production summary…</Card>
-      ) : null}
+      {summaryQuery.isLoading ? <ProductionSummarySkeleton /> : null}
 
       {summary ? (
         <>

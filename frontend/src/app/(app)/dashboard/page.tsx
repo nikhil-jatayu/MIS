@@ -26,6 +26,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AlertTypeBadge, ProjectStatusBadge } from "@/components/badges";
+import { DashboardSkeleton } from "@/components/loading-skeletons";
 import {
   AlertBanner,
   Button,
@@ -34,7 +35,6 @@ import {
   EmptyState,
   PageHeader,
   ProgressBar,
-  Skeleton,
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -69,18 +69,7 @@ export default function DashboardPage() {
   if (!user) return null;
 
   if (query.isLoading) {
-    return (
-      <div>
-        <Skeleton className="h-8 w-60" />
-        <Skeleton className="mt-2 h-4 w-96" />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <Skeleton key={index} className="h-28" />
-          ))}
-        </div>
-        <Skeleton className="mt-6 h-80" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (query.isError || !query.data) {

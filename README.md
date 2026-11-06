@@ -1,4 +1,4 @@
-# JES Electronics Systems Pvt Ltd — MIS
+# JES Electronic Systems Pvt Ltd — MIS
 
 Management Information System for the R&D and production pipeline: projects,
 inventory and BOM allocation, purchase requests, progress, production/testing,
@@ -257,4 +257,4 @@ manifests, Docker images, and advanced charting.
 
 ---
 
-Made and managed by JES Electronics Systems Pvt Ltd
+Made and managed by JES Electronic Systems Pvt Ltd

@@ -13,6 +13,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { AlertTypeBadge, ProjectStatusBadge } from "@/components/badges";
+import { AlertListSkeleton } from "@/components/loading-skeletons";
 import {
   AlertBanner,
   Button,
@@ -20,7 +21,6 @@ import {
   EmptyState,
   PageHeader,
   Pagination,
-  Skeleton,
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -164,11 +164,7 @@ export default function AlertsPage() {
           {errorMessage(query.error)}
         </AlertBanner>
       ) : query.isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={index} className="h-28" />
-          ))}
-        </div>
+        <AlertListSkeleton count={5} />
       ) : !query.data?.items.length ? (
         <Card>
           <EmptyState

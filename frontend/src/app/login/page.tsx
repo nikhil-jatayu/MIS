@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 
+import { AppShellSkeleton } from "@/components/app-shell-skeleton";
+
 import { LoginForm } from "./login-form";
 
 export const metadata = {
@@ -9,11 +11,7 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-slate-300">
-          Loading sign-in…
-        </div>
-      }
+      fallback={<AppShellSkeleton />}
     >
       <LoginForm />
     </Suspense>

@@ -29,8 +29,7 @@ import { toast } from "sonner";
 
 import { AppShellSkeleton } from "@/components/app-shell-skeleton";
 import { MisBrand, OrganizationCredit } from "@/components/mis-brand";
-import { AuthGate } from "@/components/auth-gate";
-import { Avatar, Badge } from "@/components/ui";
+import { Avatar, Badge, Button, Modal } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { Alert, MessageResponse, Page, UserRole } from "@/lib/types";
@@ -103,13 +102,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (isLoading || !user) {
-    return (
-      <AuthGate>
-        <AppShellSkeleton />
-      </AuthGate>
-    );
+    return <AppShellSkeleton />;
   }
 
   const navigation = NAVIGATION.filter(
@@ -118,7 +115,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const canCreateProjects =
     user.role === "ADMIN" || user.role === "SUPER_ADMIN";
 
+  function closeLogoutDialog() {
+    if (!isLoggingOut) setLogoutDialogOpen(false);
+  }
+
   async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
       // Keep the auth query observer alive and explicitly mark the session
       // anonymous. Clearing the entire QueryClient here removes the active
@@ -130,6 +133,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       window.location.replace("/login");
     } catch (error) {
       toast.error(errorMessage(error, "Unable to sign out."));
+      setIsLoggingOut(false);
     }
   }
 
@@ -140,7 +144,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           navigation={navigation}
           pathname={pathname}
           canCreateProjects={canCreateProjects}
-          onLogout={handleLogout}
+          onLogout={() => setLogoutDialogOpen(true)}
         />
       </aside>
 
@@ -163,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               navigation={navigation}
               pathname={pathname}
               canCreateProjects={canCreateProjects}
-              onLogout={handleLogout}
+              onLogout={() => setLogoutDialogOpen(true)}
               onNavigate={() => setMobileOpen(false)}
             />
           </aside>
@@ -233,6 +237,37 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </footer>
       </div>
+
+      <Modal
+        open={logoutDialogOpen}
+        onClose={closeLogoutDialog}
+        title="Sign out?"
+        description="Are you sure you want to sign out of the MIS?"
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={closeLogoutDialog}
+              disabled={isLoggingOut}
+              autoFocus
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleLogout}
+              loading={isLoggingOut}
+            >
+              Sign out
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          You will need to sign in again to access the workspace.
+        </p>
+      </Modal>
     </div>
   );
 }

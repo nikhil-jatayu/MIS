@@ -344,7 +344,10 @@ export function Avatar({
 
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("animate-pulse rounded-lg bg-slate-200/70", className)} />
+    <div
+      aria-hidden="true"
+      className={cn("animate-pulse rounded-md bg-slate-200", className)}
+    />
   );
 }
 

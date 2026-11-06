@@ -21,6 +21,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import { TableRowsSkeleton } from "@/components/loading-skeletons";
 import {
   AlertBanner,
   Button,
@@ -32,7 +33,6 @@ import {
   PageHeader,
   Pagination,
   Select,
-  Skeleton,
   Spinner,
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
@@ -172,11 +172,9 @@ export default function InventoryPage() {
           {errorMessage(query.error)}
         </AlertBanner>
       ) : query.isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton key={index} className="h-14" />
-          ))}
-        </div>
+        <Card className="overflow-hidden">
+          <TableRowsSkeleton rows={6} columns={5} />
+        </Card>
       ) : !query.data?.items.length ? (
         <Card>
           <EmptyState

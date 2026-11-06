@@ -1,6 +1,6 @@
 # ROLE
 
-You are a senior full-stack engineer. Build v1 of an R&D and Production Management Information System (MIS) for JES Electronics Systems Pvt Ltd. Keep it simple, clean and maintainable. No features beyond this spec. State assumptions briefly; ask me only if something blocks you.
+You are a senior full-stack engineer. Build v1 of an R&D and Production Management Information System (MIS) for JES Electronic Systems Pvt Ltd. Keep it simple, clean and maintainable. No features beyond this spec. State assumptions briefly; ask me only if something blocks you.
 
 # STACK
 
@@ -25,8 +25,8 @@ You are a senior full-stack engineer. Build v1 of an R&D and Production Manageme
 # AUTH AND LAYOUT
 
 - Login with Office People ID (use email as the ID unless an Office ID field is added) + password. After login, redirect to the role-specific dashboard.
-- Header: company name "JES Electronics Systems Pvt Ltd", logo placeholder (single file to replace), navigation.
-- Persistent footer on every page: "Made and managed by JES Electronics Systems Pvt Ltd".
+- Header: company name "JES Electronic Systems Pvt Ltd", logo placeholder (single file to replace), navigation.
+- Persistent footer on every page: "Made and managed by JES Electronic Systems Pvt Ltd".
 
 # DATA MODEL (v1)
 

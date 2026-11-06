@@ -83,7 +83,7 @@ export function OrganizationCredit({
           dark ? "text-white" : "text-slate-900",
         )}
       >
-        JES Electronics Systems Pvt Ltd
+        JES Electronic Systems Pvt Ltd
       </p>
     </div>
   );
