@@ -33,6 +33,16 @@ class Priority(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class Department(StrEnum):
+    MANAGEMENT = "management"
+    R_D = "R_D"
+    PRODUCTION = "production"
+    ASSEMBLY = "assembly"
+    TESTING = "testing"
+    STORE = "store"
+    OTHER = "other"
+
+
 class ProjectMemberRole(StrEnum):
     DEVELOPER = "DEVELOPER"
     PRODUCER = "PRODUCER"

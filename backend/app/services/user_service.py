@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError, UnprocessableError
 from app.core.security import PasswordPolicyError, hash_password, validate_password_strength
-from app.models.enums import UserRole
+from app.models.enums import Department, UserRole
 from app.models.user import User
 from app.schemas.common import Page
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -34,6 +34,7 @@ def list_users(
     page_size: int,
     q: str | None = None,
     role: UserRole | None = None,
+    department: Department | None = None,
     is_active: bool | None = None,
 ) -> Page[UserRead]:
     statement = select(User).order_by(User.name.asc())
@@ -44,6 +45,8 @@ def list_users(
         )
     if role:
         statement = statement.where(User.role == role)
+    if department:
+        statement = statement.where(User.department == department)
     if is_active is not None:
         statement = statement.where(User.is_active.is_(is_active))
     items, total = paginate(db, statement, page=page, page_size=page_size)
@@ -62,6 +65,8 @@ def create_user(db: Session, *, actor: User, payload: UserCreate) -> User:
         name=payload.name,
         email=payload.email.strip().lower(),
         role=payload.role,
+        department=payload.department,
+        department_other=payload.department_other,
         password_hash=hash_password(payload.temporary_password),
         is_active=True,
         must_change_password=True,
@@ -103,6 +108,24 @@ def update_user(db: Session, *, actor: User, user_id: UUID, payload: UserUpdate)
         user.role = payload.role
     if payload.is_active is not None:
         user.is_active = payload.is_active
+
+    department_set = "department" in payload.model_fields_set
+    other_set = "department_other" in payload.model_fields_set
+    if department_set or other_set:
+        new_department = payload.department if department_set else user.department
+        if new_department == Department.OTHER:
+            other = payload.department_other if other_set else user.department_other
+            other = other.strip() if other and other.strip() else None
+            if not other:
+                raise UnprocessableError(
+                    "A description is required when department is 'other'",
+                    code="DEPARTMENT_OTHER_REQUIRED",
+                )
+        else:
+            other = None
+        if department_set:
+            user.department = new_department
+        user.department_other = other
 
     after = audit_service.user_snapshot(user)
     if before != after:

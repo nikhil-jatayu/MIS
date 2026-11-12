@@ -32,6 +32,7 @@ def create_project(
     project_type: str = "PRODUCTION",
     priority: str = "HIGH",
     end_date: date | None = None,
+    estimated_completion_date: date | None = None,
 ) -> dict:
     payload = {
         "name": name,
@@ -40,9 +41,10 @@ def create_project(
         "priority": priority,
         "start_date": date.today().isoformat(),
         "end_date": (end_date or (date.today() + timedelta(days=30))).isoformat(),
-        "members": [
-            {"user_id": member_id, "role_in_project": "DEVELOPER"} for member_id in member_ids
-        ],
+        "estimated_completion_date": (
+            estimated_completion_date.isoformat() if estimated_completion_date else None
+        ),
+        "members": [{"user_id": member_id, "department": "production"} for member_id in member_ids],
         "bom": [
             {"item_id": item_id, "quantity_required": quantity} for item_id, quantity in (bom or [])
         ],
