@@ -782,6 +782,14 @@ export default function ProjectDetailPage() {
                     Submit for testing
                   </Button>
                 ) : null}
+                {isAdmin &&
+                project.status === "IN_TESTING" &&
+                !project.test_result ? (
+                  <Button className="w-full" onClick={() => setTestingOpen(true)}>
+                    <ClipboardCheck className="h-4 w-4" />
+                    Reassign tester
+                  </Button>
+                ) : null}
                 {project.status === "IN_TESTING" && !project.test_result ? (
                   canRecordResult ? (
                     <Button

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BarChart3,
   Bell,
   Building2,
   Boxes,
@@ -53,6 +54,9 @@ const NAVIGATION: NavigationItem[] = [
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/inventory", label: "Inventory", icon: Boxes },
   { href: "/purchases", label: "Purchase requests", icon: ShoppingCart },
+  { href: "/reports/production", label: "Production reports", icon: BarChart3 },
+  { href: "/reports/operations", label: "Operations reports", icon: BarChart3 },
+  { href: "/reports/alerts-audit", label: "Alerts & Audit reports", icon: ScrollText },
   { href: "/production/summary", label: "Production summary", icon: Factory },
   { href: "/production/log", label: "Production log", icon: ClipboardList },
   { href: "/production/actions", label: "Action tracker", icon: ListChecks },
@@ -78,6 +82,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/projects/new": "New project",
   "/inventory": "Inventory",
   "/purchases": "Purchase requests",
+  "/reports/production": "Production reports",
+  "/reports/operations": "Operations reports",
+  "/reports/alerts-audit": "Alerts & Audit reports",
   "/production/summary": "Production summary",
   "/production/log": "Production log",
   "/production/actions": "Production action tracker",

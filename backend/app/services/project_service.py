@@ -85,6 +85,7 @@ def snapshot(project: Project) -> dict[str, Any]:
                 "user_id": str(member.user_id),
                 "name": member.user.name,
                 "role_in_project": member.role_in_project,
+                "department": member.department,
             }
             for member in project.members
         ],
@@ -209,7 +210,11 @@ def create_project(db: Session, *, actor: User, payload: ProjectCreate) -> Proje
             ProjectMember(
                 project_id=project.id,
                 user_id=member.user_id,
-                department=member.department or users[member.user_id].department,
+                department=(
+                    member.department
+                    if "department" in member.model_fields_set
+                    else users[member.user_id].department
+                    ),
             )
         )
     for line in payload.bom:
@@ -389,20 +394,35 @@ def update_members(
 ) -> Project:
     project = get_project(db, project_id)
     users = _validate_members(db, payload.members)
+
+    # Preserve existing project-member roles before clearing membership.
+    existing_roles = {
+        existing.user_id: existing.role_in_project
+        for existing in project.members
+    }
+
     before = snapshot(project)
     project.members.clear()
     db.flush()
+
     for member in payload.members:
         db.add(
             ProjectMember(
                 project_id=project.id,
                 user_id=member.user_id,
-                department=member.department or users[member.user_id].department,
+                department=(
+                    member.department
+                    if "department" in member.model_fields_set
+                    else users[member.user_id].department
+                ),
+                role_in_project=existing_roles.get(member.user_id),
             )
         )
+
     db.flush()
     project = get_project(db, project_id)
     after = snapshot(project)
+
     if before != after:
         audit_service.record(
             db,
@@ -413,6 +433,7 @@ def update_members(
             before=before,
             after=after,
         )
+
     db.commit()
     return get_project(db, project_id)
 
@@ -534,16 +555,29 @@ def start_production(db: Session, *, actor: User, project_id: UUID) -> Project:
 
 def submit_for_testing(db: Session, *, actor: User, project_id: UUID, tester_id: UUID) -> Project:
     project = get_project(db, project_id, for_update=True)
-    if project.status != ProjectStatus.IN_PRODUCTION:
+    is_initial_submission = project.status == ProjectStatus.IN_PRODUCTION
+    is_reassignment = (
+        project.status == ProjectStatus.IN_TESTING and project.test_result is None
+    )
+    if not (is_initial_submission or is_reassignment):
         raise ConflictError(
-            "Only projects in production can be submitted for testing",
+            "Projects can be submitted from production, or have their Tester reassigned "
+            "while testing is awaiting a result",
             code="INVALID_STATUS_TRANSITION",
         )
+
     tester = db.scalar(select(User).where(User.id == tester_id, User.is_active.is_(True)))
     if not tester:
         raise UnprocessableError("Tester not found or inactive", code="INVALID_TESTER")
 
     before = snapshot(project)
+
+    # There must be exactly one assigned Tester. Clear the previous assignment
+    # before promoting the newly selected project member.
+    for member in project.members:
+        if member.role_in_project == ProjectMemberRole.TESTER:
+            member.role_in_project = None
+
     membership = next((member for member in project.members if member.user_id == tester_id), None)
     if membership:
         membership.role_in_project = ProjectMemberRole.TESTER
@@ -553,20 +587,24 @@ def submit_for_testing(db: Session, *, actor: User, project_id: UUID, tester_id:
                 project_id=project.id,
                 user_id=tester_id,
                 role_in_project=ProjectMemberRole.TESTER,
+                department=tester.department,
             )
         )
-    project.status = ProjectStatus.IN_TESTING
-    project.status_changed_at = datetime.now(UTC)
-    project.test_result = None
-    project.test_note = None
-    project.tested_by = None
-    project.tested_at = None
+
+    if is_initial_submission:
+        project.status = ProjectStatus.IN_TESTING
+        project.status_changed_at = datetime.now(UTC)
+        project.test_result = None
+        project.test_note = None
+        project.tested_by = None
+        project.tested_at = None
+
     db.flush()
     project = get_project(db, project_id)
     audit_service.record(
         db,
         actor_id=actor.id,
-        action="STATUS_CHANGED",
+        action="TESTER_REASSIGNED" if is_reassignment else "STATUS_CHANGED",
         entity="project",
         entity_id=project.id,
         before=before,

@@ -135,13 +135,23 @@ def update_entry(
     changes = payload.model_dump(exclude_unset=True)
     if "project_id" in changes:
         _ensure_project_access(db, changes["project_id"], actor)
+
     new_actual = changes.get("actual_quantity", entry.actual_quantity)
     new_accepted = changes.get("accepted_quantity", entry.accepted_quantity)
     new_rework = changes.get("rework_quantity", entry.rework_quantity)
+
     if new_accepted > new_actual:
         raise UnprocessableError("Accepted quantity cannot exceed actual quantity")
+
     if new_rework > new_actual:
         raise UnprocessableError("Rework quantity cannot exceed actual quantity")
+
+    if new_accepted + new_rework > new_actual:
+        raise UnprocessableError(
+            "First-pass accepted quantity plus rework-sent quantity "
+            "cannot exceed actual quantity"
+        )
+
     before = {key: getattr(entry, key) for key in changes}
     for key, value in changes.items():
         setattr(entry, key, value)
@@ -241,10 +251,13 @@ def update_action(
     db: Session, *, actor: User, action_id: UUID, payload: ProductionActionUpdate
 ) -> ProductionAction:
     action = get_action(db, action_id)
-    if actor.id not in {action.created_by, action.responsible_user_id} and not _is_admin(actor):
+    if (
+        actor.id not in {action.created_by, action.responsible_user_id}
+        and not _is_admin(actor)
+    ):
         raise ForbiddenError(
             "Only the action creator, assigned owner or an Admin can update this action"
-        )
+            )
     changes = payload.model_dump(exclude_unset=True)
     if "responsible_user_id" in changes and not _is_admin(actor):
         if changes["responsible_user_id"] != action.responsible_user_id:
@@ -308,8 +321,8 @@ def upsert_monthly_review(
     else:
         before = {
             "management_summary": review.management_summary,
-            "reviewed_at": review.reviewed_at,
-        }
+            "reviewed_at": review.reviewed_at
+            }
         if review.management_summary != payload.management_summary:
             review.reviewed_by_user_id = None
             review.reviewed_at = None
@@ -395,8 +408,7 @@ def get_monthly_summary(db: Session, *, year: int, month: int) -> ProductionSumm
                 ProductionAction.status != "CLOSED", ProductionAction.deadline < date.today()
             )
         )
-        or 0
-    )
+    ) or 0
     month_start = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
     next_month = datetime.combine(
         date(year + (1 if month == 12 else 0), 1 if month == 12 else month + 1, 1),

@@ -383,3 +383,54 @@ export interface ProductionAssignee {
   id: string;
   name: string;
 }
+
+export interface ProductionReportMetric {
+  unit_of_measure: string;
+  entries_count: number;
+  planned_quantity: number;
+  actual_quantity: number;
+  accepted_first_pass_quantity: number;
+  rework_sent_quantity: number;
+  first_pass_non_acceptance_quantity: number;
+  plan_achievement_percent: number | null;
+  first_pass_yield_percent: number | null;
+  rework_rate_percent: number | null;
+  first_pass_non_acceptance_rate_percent: number | null;
+  production_hours: number;
+  downtime_hours: number;
+  downtime_percent: number | null;
+}
+
+export interface ProductionReportDimensionMetric extends ProductionReportMetric {
+  dimension_value: string;
+}
+
+export interface ProductionReportTrendPoint extends ProductionReportMetric {
+  period: string;
+}
+
+export interface ProductionReportActionSummary {
+  actions_created_in_period: number;
+  current_open_actions: number;
+  current_overdue_actions: number;
+  closed_actions_in_period: number;
+  scope_note: string;
+}
+
+export interface ProductionReportSummary {
+  date_from: string;
+  date_to: string;
+  granularity: "day" | "month";
+  filters: {
+    production_line: string | null;
+    product_model: string | null;
+    project_id: string | null;
+    unit_of_measure: string | null;
+  };
+  totals_by_unit: ProductionReportMetric[];
+  by_line: ProductionReportDimensionMetric[];
+  by_product: ProductionReportDimensionMetric[];
+  trend: ProductionReportTrendPoint[];
+  actions: ProductionReportActionSummary;
+  quality_definition: string;
+}

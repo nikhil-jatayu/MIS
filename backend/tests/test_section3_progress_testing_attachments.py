@@ -117,6 +117,28 @@ def test_production_testing_pass_fail_and_signoff(client: TestClient, auth_heade
         if member["user"]["id"] == str(standard_users["tester"].id)
     )
     assert tester_membership["role_in_project"] == "TESTER"
+        # Updating the project team must preserve the assigned tester role.
+    updated_team = client.put(
+        f"/api/v1/projects/{project['id']}/members",
+        headers=auth_headers["admin"],
+        json={
+            "members": [
+                {
+                    "user_id": member["user"]["id"],
+                    "department": member["department"],
+                }
+                for member in submitted.json()["members"]
+            ]
+        },
+    )
+    assert updated_team.status_code == 200, updated_team.text
+
+    updated_tester = next(
+        member
+        for member in updated_team.json()["members"]
+        if member["user"]["id"] == str(standard_users["tester"].id)
+    )
+    assert updated_tester["role_in_project"] == "TESTER"
 
     wrong_tester = client.post(
         f"/api/v1/projects/{project['id']}/test-result",
@@ -239,3 +261,64 @@ def test_attachment_upload_download_and_limits(
     )
     assert too_large.status_code == 413
     assert too_large.json()["error"]["code"] == "FILE_TOO_LARGE"
+
+def test_tester_can_be_reassigned_while_project_is_in_testing(
+    client: TestClient, auth_headers, standard_users
+):
+    project = _ready_project(
+        client, auth_headers, standard_users, name="Tester reassignment", tester=True
+    )
+
+    started = client.post(
+        f"/api/v1/projects/{project['id']}/start-production",
+        headers=auth_headers["admin"],
+    )
+    assert started.status_code == 200, started.text
+
+    submitted = client.post(
+        f"/api/v1/projects/{project['id']}/submit-testing",
+        headers=auth_headers["admin"],
+        json={"tester_id": str(standard_users["tester"].id)},
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["status"] == "IN_TESTING"
+
+    # Remove the original Tester and add a replacement to the project team.
+    team_update = client.put(
+        f"/api/v1/projects/{project['id']}/members",
+        headers=auth_headers["admin"],
+        json={
+            "members": [
+                {"user_id": str(standard_users["user"].id), "department": "production"},
+                {"user_id": str(standard_users["other"].id), "department": "assembly"},
+            ]
+        },
+    )
+    assert team_update.status_code == 200, team_update.text
+    assert all(
+        member["user"]["id"] != str(standard_users["tester"].id)
+        for member in team_update.json()["members"]
+    )
+
+    reassigned = client.post(
+        f"/api/v1/projects/{project['id']}/submit-testing",
+        headers=auth_headers["admin"],
+        json={"tester_id": str(standard_users["other"].id)},
+    )
+    assert reassigned.status_code == 200, reassigned.text
+    assert reassigned.json()["status"] == "IN_TESTING"
+
+    replacement = next(
+        member
+        for member in reassigned.json()["members"]
+        if member["user"]["id"] == str(standard_users["other"].id)
+    )
+    assert replacement["role_in_project"] == "TESTER"
+
+    result = client.post(
+        f"/api/v1/projects/{project['id']}/test-result",
+        headers=auth_headers["other"],
+        json={"result": "PASS", "note": "Replacement tester verified the build"},
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["test_result"] == "PASS"

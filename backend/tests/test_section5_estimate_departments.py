@@ -179,3 +179,74 @@ def test_department_can_be_cleared(client: TestClient, auth_headers, standard_us
     )
     assert cleared.status_code == 200, cleared.text
     assert cleared.json()["department"] is None
+
+def test_project_member_department_change_is_audited(
+    client: TestClient, auth_headers, standard_users
+):
+    user_id = str(standard_users["user"].id)
+
+    project = create_project(
+        client,
+        auth_headers["admin"],
+        name="Department Audit Test",
+        member_ids=[user_id],
+    )
+
+    updated = client.put(
+        f"/api/v1/projects/{project['id']}/members",
+        headers=auth_headers["admin"],
+        json={
+            "members": [
+                {"user_id": user_id, "department": "assembly"}
+            ]
+        },
+    )
+    assert updated.status_code == 200, updated.text
+
+    audit = client.get(
+        f"/api/v1/audit-logs?entity=project&entity_id={project['id']}&action=MEMBERS_CHANGED",
+        headers=auth_headers["super"],
+    )
+
+    assert audit.status_code == 200
+    entry = audit.json()["items"][0]
+    assert entry["before"]["members"][0]["department"] == "production"
+    assert entry["after"]["members"][0]["department"] == "assembly"
+
+def test_project_member_can_be_explicitly_unassigned(
+    client: TestClient, auth_headers, standard_users
+):
+    user_id = standard_users["user"].id
+
+    # A profile department must not override an explicit null.
+    profile = client.patch(
+        f"/api/v1/users/{user_id}",
+        headers=auth_headers["super"],
+        json={"department": "R_D"},
+    )
+    assert profile.status_code == 200, profile.text
+
+    created = client.post(
+        "/api/v1/projects",
+        headers=auth_headers["admin"],
+        json={
+            "name": "Unassigned Department Test",
+            "type": "PRODUCTION",
+            "priority": "MEDIUM",
+            "start_date": date.today().isoformat(),
+            "members": [{"user_id": str(user_id), "department": None}],
+            "bom": [],
+        },
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["members"][0]["department"] is None
+
+    updated = client.put(
+        f"/api/v1/projects/{created.json()['id']}/members",
+        headers=auth_headers["admin"],
+        json={
+            "members": [{"user_id": str(user_id), "department": None}],
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["members"][0]["department"] is None

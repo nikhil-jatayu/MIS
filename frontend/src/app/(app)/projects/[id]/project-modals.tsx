@@ -281,14 +281,14 @@ export function MembersModal({
 }) {
   const refresh = useRefreshProject(project.id);
   const [rows, setRows] = useState<
-    { user_id: string; department: Department }[]
+    { user_id: string; department: Department | "" }[]
   >(
     project.members.length
       ? project.members.map((member) => ({
           user_id: member.user.id,
-          department: (member.department ?? "R_D") as Department,
+          department: member.department ?? "",
         }))
-      : [{ user_id: "", department: "R_D" }],
+      : [{ user_id: "", department: "" }],
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -304,7 +304,12 @@ export function MembersModal({
     mutationFn: () =>
       apiFetch<Project>(`/projects/${project.id}/members`, {
         method: "PUT",
-        body: JSON.stringify({ members: rows }),
+        body: JSON.stringify({
+          members: rows.map((row) => ({
+            user_id: row.user_id,
+            department: row.department || null,
+          })),
+        }),
       }),
     onSuccess: () => {
       refresh();
@@ -374,9 +379,7 @@ export function MembersModal({
                           ? {
                               ...item,
                               user_id: event.target.value,
-                              department:
-                                (person?.department as Department | null) ??
-                                item.department,
+                              department: person?.department ?? "",
                             }
                           : item,
                       ),
@@ -408,13 +411,14 @@ export function MembersModal({
                         itemIndex === index
                           ? {
                               ...item,
-                              department: event.target.value as Department,
+                              department: event.target.value as Department | "",
                             }
                           : item,
                       ),
                     )
                   }
                 >
+                  <option value="">Unassigned</option>
                   {DEPARTMENT_OPTIONS.map((value) => (
                     <option key={value} value={value}>
                       {DEPARTMENT_LABELS[value]}
@@ -442,7 +446,7 @@ export function MembersModal({
           onClick={() =>
             setRows((current) => [
               ...current,
-              { user_id: "", department: "R_D" },
+              { user_id: "", department: "" },
             ])
           }
         >
@@ -758,6 +762,7 @@ export function SubmitTestingModal({
   const currentTester =
     project.members.find((member) => member.role_in_project === "TESTER")?.user.id ??
     "";
+  const isReassignment = project.status === "IN_TESTING";
   const [testerId, setTesterId] = useState(currentTester);
   const [error, setError] = useState<string | null>(null);
 
@@ -769,7 +774,7 @@ export function SubmitTestingModal({
       }),
     onSuccess: () => {
       refresh();
-      toast.success("Project submitted for testing");
+      toast.success(isReassignment ? "Tester reassigned" : "Project submitted for testing");
       onClose();
     },
     onError: (mutationError) => {
@@ -782,8 +787,12 @@ export function SubmitTestingModal({
     <Modal
       open
       onClose={onClose}
-      title="Submit for testing"
-      description="Select the QA Tester who will record the pass or fail result."
+      title={isReassignment ? "Reassign tester" : "Submit for testing"}
+      description={
+        isReassignment
+          ? "Select the replacement QA Tester. The previous Tester assignment will be cleared."
+          : "Select the QA Tester who will record the pass or fail result."
+      }
       size="sm"
       footer={
         <>
@@ -800,7 +809,7 @@ export function SubmitTestingModal({
             }}
             loading={mutation.isPending}
           >
-            Submit for testing
+            {isReassignment ? "Reassign tester" : "Submit for testing"}
           </Button>
         </>
       }
@@ -821,8 +830,9 @@ export function SubmitTestingModal({
           </Select>
         </Field>
         <p className="text-xs leading-5 text-slate-500">
-          The selected person is added as a Tester if they are not already on the
-          project. The project moves to In Testing.
+          {isReassignment
+            ? "The new selection becomes the only assigned Tester. The project remains in Testing."
+            : "The selected person is added as a Tester if they are not already on the project. The project moves to In Testing."}
         </p>
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">

@@ -46,7 +46,9 @@ import {
 
 const memberSchema = z.object({
   user_id: z.string().min(1, "Select a person"),
-  department: z.enum([
+  department: z.union([
+    z.literal(""),
+    z.enum([
     "management",
     "R_D",
     "production",
@@ -54,6 +56,7 @@ const memberSchema = z.object({
     "testing",
     "store",
     "other",
+    ]),
   ]),
 });
 
@@ -161,7 +164,7 @@ function NewProjectContent() {
       start_date: today,
       end_date: "",
       estimated_completion_date: "",
-      members: [{ user_id: "", department: "R_D" }],
+      members: [{ user_id: "", department: "" }],
       bom: [],
     },
   });
@@ -186,7 +189,7 @@ function NewProjectContent() {
           estimated_completion_date: values.estimated_completion_date || null,
           members: values.members.map((member) => ({
             user_id: member.user_id,
-            department: member.department,
+            department: member.department || null,
           })),
           bom: values.bom.map((line) => ({
             item_id: line.item_id,
@@ -334,7 +337,7 @@ function NewProjectContent() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    members.append({ user_id: "", department: "R_D" })
+                    members.append({ user_id: "", department: "" })
                   }
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -359,11 +362,11 @@ function NewProjectContent() {
                         const person = peopleQuery.data?.find(
                           (candidate) => candidate.id === event.target.value,
                         );
-                        if (person?.department) {
-                          setValue(`members.${index}.department`, person.department, {
-                            shouldValidate: true,
-                          });
-                        }
+                        setValue(
+                          `members.${index}.department`,
+                          person?.department ?? "",
+                          { shouldValidate: true },
+                        );
                       }}
                     >
                       <option value="">Select a person</option>
@@ -386,6 +389,7 @@ function NewProjectContent() {
                       id={`member-dept-${index}`}
                       {...register(`members.${index}.department`)}
                     >
+                      <option value="">Unassigned</option>
                       {DEPARTMENT_OPTIONS.map((value) => (
                         <option key={value} value={value}>
                           {DEPARTMENT_LABELS[value]}
