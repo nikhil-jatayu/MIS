@@ -15,7 +15,7 @@ def test_seed_is_idempotent_and_first_login_forces_password_change(client, db):
 
     login = client.post(
         "/api/v1/auth/login",
-        json={"email": "ashmant@jatayues.com", "password": "ashmant@123"},
+        json={"email": "ashmant@jatayues.com", "password": "Ashmant@123"},
     )
     assert login.status_code == 200, login.text
     payload = login.json()
@@ -30,7 +30,7 @@ def test_seed_is_idempotent_and_first_login_forces_password_change(client, db):
         "/api/v1/auth/change-password",
         headers=headers,
         json={
-            "current_password": "ashmant@123",
+            "current_password": "Ashmant@123",
             "new_password": "NewAshmant@456",
         },
     )
@@ -43,7 +43,7 @@ def test_seed_is_idempotent_and_first_login_forces_password_change(client, db):
 
     old_login = client.post(
         "/api/v1/auth/login",
-        json={"email": "ashmant@jatayues.com", "password": "ashmant@123"},
+        json={"email": "ashmant@jatayues.com", "password": "Ashmant@123"},
     )
     assert old_login.status_code == 401
     new_login = client.post(

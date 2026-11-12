@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui";
 import type {
   AlertType,
+  Department,
   Priority,
-  ProjectMemberRole,
   ProjectStatus,
   ProjectType,
   PurchaseRequestStatus,
@@ -11,7 +11,7 @@ import type {
 } from "@/lib/types";
 import {
   ALERT_TYPE_LABELS,
-  MEMBER_ROLE_LABELS,
+  departmentLabel,
   PRIORITY_CLASSES,
   PRIORITY_LABELS,
   PROJECT_STATUS_CLASSES,
@@ -61,10 +61,16 @@ export function AlertTypeBadge({ type }: { type: AlertType }) {
   );
 }
 
-export function MemberRoleBadge({ role }: { role: ProjectMemberRole }) {
+export function DepartmentBadge({
+  department,
+  other,
+}: {
+  department: Department | null | undefined;
+  other?: string | null;
+}) {
   return (
     <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-      {MEMBER_ROLE_LABELS[role]}
+      {departmentLabel(department, other)}
     </Badge>
   );
 }

@@ -4,8 +4,8 @@ import { twMerge } from "tailwind-merge";
 
 import type {
   AlertType,
+  Department,
   Priority,
-  ProjectMemberRole,
   ProjectStatus,
   ProjectType,
   PurchaseRequestStatus,
@@ -153,11 +153,34 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   CRITICAL: "Critical",
 };
 
-export const MEMBER_ROLE_LABELS: Record<ProjectMemberRole, string> = {
-  DEVELOPER: "Developer",
-  PRODUCER: "Producer",
-  TESTER: "Tester",
+export const DEPARTMENT_LABELS: Record<Department, string> = {
+  management: "Management",
+  R_D: "R&D",
+  production: "Production",
+  assembly: "Assembly",
+  testing: "Testing",
+  store: "Store",
+  other: "Other",
 };
+
+export const DEPARTMENT_OPTIONS: Department[] = [
+  "management",
+  "R_D",
+  "production",
+  "assembly",
+  "testing",
+  "store",
+  "other",
+];
+
+export function departmentLabel(
+  department: Department | null | undefined,
+  other?: string | null,
+): string {
+  if (!department) return "Unassigned";
+  if (department === "other") return other?.trim() || "Other";
+  return DEPARTMENT_LABELS[department];
+}
 
 export const PURCHASE_STATUS_LABELS: Record<PurchaseRequestStatus, string> = {
   PENDING: "Pending approval",

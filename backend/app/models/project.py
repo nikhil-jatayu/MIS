@@ -5,6 +5,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -21,6 +22,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
 from app.models.enums import (
+    Department,
     Priority,
     ProjectMemberRole,
     ProjectStatus,
@@ -57,6 +59,22 @@ class Project(TimestampMixin, Base):
     )
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    estimated_completion_date: Mapped[date | None] = mapped_column(
+        Date, nullable=True, index=True, comment="Estimated completion date for the project"
+    )
+    estimated_completion_set_by: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    estimated_completion_set_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    estimated_completion_edited_by_member: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment="True once an assigned team member has used their one-time estimate edit",
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
@@ -83,6 +101,9 @@ class Project(TimestampMixin, Base):
         back_populates="created_projects", foreign_keys=[created_by], lazy="raise"
     )
     tester: Mapped["User | None"] = relationship(foreign_keys=[tested_by], lazy="raise")
+    estimate_setter: Mapped["User | None"] = relationship(
+        foreign_keys=[estimated_completion_set_by], lazy="raise"
+    )
     members: Mapped[list["ProjectMember"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
@@ -131,8 +152,11 @@ class ProjectMember(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    role_in_project: Mapped[ProjectMemberRole] = mapped_column(
-        enum_type(ProjectMemberRole, "project_member_role", 20), nullable=False
+    role_in_project: Mapped[ProjectMemberRole | None] = mapped_column(
+        enum_type(ProjectMemberRole, "project_member_role", 20), nullable=True
+    )
+    department: Mapped[Department | None] = mapped_column(
+        enum_type(Department, "department", 20), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
