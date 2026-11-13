@@ -142,6 +142,10 @@ def update_entry(
         raise UnprocessableError("Accepted quantity cannot exceed actual quantity")
     if new_rework > new_actual:
         raise UnprocessableError("Rework quantity cannot exceed actual quantity")
+    if new_accepted + new_rework > new_actual:
+        raise UnprocessableError(
+            "First-pass accepted quantity plus rework-sent quantity cannot exceed actual quantity"
+        )
     before = {key: getattr(entry, key) for key in changes}
     for key, value in changes.items():
         setattr(entry, key, value)
@@ -395,8 +399,7 @@ def get_monthly_summary(db: Session, *, year: int, month: int) -> ProductionSumm
                 ProductionAction.status != "CLOSED", ProductionAction.deadline < date.today()
             )
         )
-        or 0
-    )
+    ) or 0
     month_start = datetime.combine(start, datetime.min.time(), tzinfo=UTC)
     next_month = datetime.combine(
         date(year + (1 if month == 12 else 0), 1 if month == 12 else month + 1, 1),

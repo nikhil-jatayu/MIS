@@ -53,6 +53,11 @@ class ProductionEntryCreate(ORMModel):
             raise ValueError("Accepted quantity cannot exceed actual quantity")
         if self.rework_quantity > self.actual_quantity:
             raise ValueError("Rework quantity cannot exceed actual quantity")
+        if self.accepted_quantity + self.rework_quantity > self.actual_quantity:
+            raise ValueError(
+                "First-pass accepted quantity plus rework-sent quantity "
+                "cannot exceed actual quantity"
+            )
         return self
 
 

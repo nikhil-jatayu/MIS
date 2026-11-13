@@ -240,3 +240,55 @@ def test_attachment_upload_download_and_limits(
     )
     assert too_large.status_code == 413
     assert too_large.json()["error"]["code"] == "FILE_TOO_LARGE"
+
+
+def test_removed_assigned_tester_loses_test_result_access(
+    client: TestClient, auth_headers, standard_users
+):
+    project = _ready_project(
+        client, auth_headers, standard_users, name="Removed Tester Build", tester=True
+    )
+
+    started = client.post(
+        f"/api/v1/projects/{project['id']}/start-production",
+        headers=auth_headers["admin"],
+    )
+    assert started.status_code == 200
+
+    submitted = client.post(
+        f"/api/v1/projects/{project['id']}/submit-testing",
+        headers=auth_headers["admin"],
+        json={"tester_id": str(standard_users["tester"].id)},
+    )
+    assert submitted.status_code == 200
+    assert submitted.json()["assigned_tester_id"] == str(standard_users["tester"].id)
+
+    removed = client.put(
+        f"/api/v1/projects/{project['id']}/members",
+        headers=auth_headers["admin"],
+        json={
+            "members": [
+                {
+                    "user_id": str(standard_users["user"].id),
+                    "department": "production",
+                }
+            ]
+        },
+    )
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["assigned_tester_id"] is None
+
+    denied = client.post(
+        f"/api/v1/projects/{project['id']}/test-result",
+        headers=auth_headers["tester"],
+        json={"result": "PASS", "note": "Removed tester attempting submission"},
+    )
+    assert denied.status_code == 403
+
+    admin_result = client.post(
+        f"/api/v1/projects/{project['id']}/test-result",
+        headers=auth_headers["admin"],
+        json={"result": "PASS", "note": "Admin recorded result"},
+    )
+    assert admin_result.status_code == 200, admin_result.text
+    assert admin_result.json()["test_result"] == "PASS"

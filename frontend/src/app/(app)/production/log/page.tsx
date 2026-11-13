@@ -70,12 +70,12 @@ export default function ProductionLogPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Production" title="Production log" description="Enter one record per production line, product/model, process stage and reporting date." />
+      <PageHeader eyebrow="Production" title="Production log" description="Enter one record per production line, product/model, process stage and reporting date. Accepted quantity means accepted at first inspection; rework quantity records units sent for rework." />
 
       <Card className="overflow-hidden">
         <div className="border-b border-slate-100 px-5 py-4">
           <h2 className="font-semibold text-slate-900">Add production entry</h2>
-          <p className="mt-1 text-xs text-slate-500">Rejected quantity and performance percentages are calculated automatically.</p>
+          <p className="mt-1 text-xs text-slate-500">First-pass non-acceptance is calculated automatically. Rework is recorded separately and is not final scrap.</p>
         </div>
         <form
           className="space-y-4 p-5"
@@ -103,14 +103,14 @@ export default function ProductionLogPage() {
             <Field label="Unit of measure" required><Input value={form.unit_of_measure} onChange={(e) => update("unit_of_measure", e.target.value)} maxLength={30} required placeholder="e.g. pcs, kg, litres" /></Field>
             <Field label="Planned quantity" required><Input type="number" min="0" step="0.001" value={form.planned_quantity} onChange={(e) => update("planned_quantity", Number(e.target.value))} required /></Field>
             <Field label="Actual quantity" required><Input type="number" min="0" step="0.001" value={form.actual_quantity} onChange={(e) => update("actual_quantity", Number(e.target.value))} required /></Field>
-            <Field label="Accepted quantity" required><Input type="number" min="0" step="0.001" value={form.accepted_quantity} onChange={(e) => update("accepted_quantity", Number(e.target.value))} required /></Field>
-            <Field label="Rework quantity"><Input type="number" min="0" step="0.001" value={form.rework_quantity} onChange={(e) => update("rework_quantity", Number(e.target.value))} /></Field>
+            <Field label="Accepted on first pass" required><Input type="number" min="0" step="0.001" value={form.accepted_quantity} onChange={(e) => update("accepted_quantity", Number(e.target.value))} required /></Field>
+            <Field label="Units sent for rework"><Input type="number" min="0" step="0.001" value={form.rework_quantity} onChange={(e) => update("rework_quantity", Number(e.target.value))} /></Field>
             <Field label="Production hours"><Input type="number" min="0" step="0.01" value={form.production_hours} onChange={(e) => update("production_hours", Number(e.target.value))} /></Field>
             <Field label="Downtime hours"><Input type="number" min="0" step="0.01" value={form.downtime_hours} onChange={(e) => update("downtime_hours", Number(e.target.value))} /></Field>
           </div>
           <Field label="Remarks"><Textarea rows={2} value={form.remarks ?? ""} onChange={(e) => update("remarks", e.target.value)} maxLength={5000} /></Field>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">Rejected quantity = actual quantity − accepted quantity.</p>
+            <p className="text-xs text-slate-500">First-pass non-acceptance = actual quantity − accepted on first pass. Rework is reported separately.</p>
             <Button type="submit" loading={createEntry.isPending}>Save production entry</Button>
           </div>
         </form>
@@ -129,7 +129,7 @@ export default function ProductionLogPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1050px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>{["Date", "Line", "Product / model", "Stage", "Unit", "Planned", "Actual", "Accepted", "Rejected", "Plan %", "FPY %"].map((label) => <th key={label} className="px-4 py-3 font-semibold">{label}</th>)}</tr>
+                  <tr>{["Date", "Line", "Product / model", "Stage", "Unit", "Planned", "Actual", "Accepted", "First-pass non-acceptance", "Plan %", "FPY %"].map((label) => <th key={label} className="px-4 py-3 font-semibold">{label}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {entriesQuery.data.items.map((entry) => (
