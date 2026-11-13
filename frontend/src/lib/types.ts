@@ -8,7 +8,14 @@ export type ProjectStatus =
   | "IN_TESTING"
   | "COMPLETED";
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
-export type ProjectMemberRole = "DEVELOPER" | "PRODUCER" | "TESTER";
+export type Department =
+  | "management"
+  | "R_D"
+  | "production"
+  | "assembly"
+  | "testing"
+  | "store"
+  | "other";
 export type PurchaseRequestStatus =
   | "PENDING"
   | "APPROVED"
@@ -23,6 +30,8 @@ export interface UserSummary {
   name: string;
   email: string;
   role: UserRole;
+  department: Department | null;
+  department_other: string | null;
   is_active: boolean;
 }
 
@@ -60,7 +69,7 @@ export interface InventoryItem {
 export interface ProjectMember {
   id: string;
   user: UserSummary;
-  role_in_project: ProjectMemberRole;
+  department: Department | null;
 }
 
 export interface ProjectBomLine {
@@ -80,6 +89,10 @@ export interface Project {
   priority: Priority;
   start_date: string | null;
   end_date: string | null;
+  estimated_completion_date: string | null;
+  estimated_completion_set_by: string | null;
+  estimated_completion_set_at: string | null;
+  estimated_completion_edited_by_member: boolean;
   created_by: string;
   status_changed_at: string;
   progress_percent: number;
@@ -89,10 +102,13 @@ export interface Project {
   test_note: string | null;
   tested_by: string | null;
   tested_at: string | null;
+  assigned_tester_id: string | null;
   created_at: string;
   updated_at: string;
   creator: UserSummary;
   tester: UserSummary | null;
+  assigned_tester: UserSummary | null;
+  estimate_setter: UserSummary | null;
   members: ProjectMember[];
   bom_lines: ProjectBomLine[];
   is_inventory_ready: boolean;

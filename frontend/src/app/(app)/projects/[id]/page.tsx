@@ -28,7 +28,7 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
-  MemberRoleBadge,
+  DepartmentBadge,
   PriorityBadge,
   ProjectStatusBadge,
   ProjectTypeBadge,
@@ -73,6 +73,7 @@ import {
   BomModal,
   CompleteProjectModal,
   EditProjectModal,
+  EstimateModal,
   MembersModal,
   ProgressModal,
   SubmitTestingModal,
@@ -102,6 +103,7 @@ export default function ProjectDetailPage() {
   const [resultOpen, setResultOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [startConfirmOpen, setStartConfirmOpen] = useState(false);
+  const [estimateOpen, setEstimateOpen] = useState(false);
 
   const projectQuery = useQuery({
     queryKey: ["project", projectId],
@@ -115,12 +117,11 @@ export default function ProjectDetailPage() {
     user && project?.members.some((member) => member.user.id === user.id),
   );
   const canAct = Boolean(isAdmin || isMember);
+  const canEditEstimate = Boolean(
+    isAdmin || (isMember && !project?.estimated_completion_edited_by_member),
+  );
   const isTester = Boolean(
-    user &&
-      project?.members.some(
-        (member) =>
-          member.user.id === user.id && member.role_in_project === "TESTER",
-      ),
+    user && project?.assigned_tester_id === user.id,
   );
 
   const usersQuery = useQuery({
@@ -281,7 +282,9 @@ export default function ProjectDetailPage() {
   const canLogProgress =
     canAct && project.status !== "COMPLETED" && Boolean(user);
   const canRecordResult =
-    isTester && project.status === "IN_TESTING" && !project.test_result;
+    (isTester || isAdmin) &&
+    project.status === "IN_TESTING" &&
+    !project.test_result;
   const canComplete =
     isAdmin &&
     project.status === "IN_TESTING" &&
@@ -332,11 +335,20 @@ export default function ProjectDetailPage() {
                   <Users className="h-4 w-4" />
                   Manage team
                 </Button>
-                <Button onClick={() => setEditOpen(true)}>
+                <Button variant="outline" onClick={() => setEditOpen(true)}>
                   <Pencil className="h-4 w-4" />
                   Edit project
                 </Button>
               </>
+            ) : null}
+            {project && canEditEstimate ? (
+              <Button variant="outline" onClick={() => setEstimateOpen(true)}>
+                <CalendarClock className="h-4 w-4" />
+                {project.estimated_completion_date ? "Revise estimate" : "Set estimate"}
+              </Button>
+            ) : null}
+            {!isAdmin && project?.estimated_completion_edited_by_member ? (
+              <span className="text-[11px] text-slate-400">Estimate locked</span>
             ) : null}
           </>
         }
@@ -872,7 +884,10 @@ export default function ProjectDetailPage() {
                       {member.user.email}
                     </p>
                   </div>
-                  <MemberRoleBadge role={member.role_in_project} />
+                  <DepartmentBadge
+                    department={member.department}
+                    other={member.user.department_other}
+                  />
                 </div>
               ))}
             </div>
@@ -929,6 +944,18 @@ export default function ProjectDetailPage() {
               <RecordRow label="Start date" value={formatDate(project.start_date, "Not set")} />
               <RecordRow label="Deadline" value={formatDate(project.end_date, "Not set")} />
               <RecordRow
+                label="Estimated completion"
+                value={formatDate(project.estimated_completion_date, "Not set")}
+              />
+              {project.estimate_setter && project.estimated_completion_set_at ? (
+                <RecordRow
+                  label="Estimate updated by"
+                  value={`${project.estimate_setter.name} · ${formatDateTime(
+                    project.estimated_completion_set_at,
+                  )}`}
+                />
+              ) : null}
+              <RecordRow
                 label="Last status change"
                 value={formatDateTime(project.status_changed_at)}
               />
@@ -940,6 +967,13 @@ export default function ProjectDetailPage() {
 
       {editOpen ? (
         <EditProjectModal project={project} onClose={() => setEditOpen(false)} />
+      ) : null}
+      {estimateOpen ? (
+        <EstimateModal
+          project={project}
+          isAdmin={isAdmin}
+          onClose={() => setEstimateOpen(false)}
+        />
       ) : null}
       {membersOpen ? (
         <MembersModal

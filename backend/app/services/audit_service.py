@@ -75,6 +75,8 @@ def user_snapshot(user: User) -> dict[str, Any]:
         "name": user.name,
         "email": user.email,
         "role": user.role,
+        "department": user.department,
+        "department_other": user.department_other,
         "is_active": user.is_active,
         "must_change_password": user.must_change_password,
     }

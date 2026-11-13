@@ -111,12 +111,13 @@ def test_production_testing_pass_fail_and_signoff(client: TestClient, auth_heade
     )
     assert submitted.status_code == 200, submitted.text
     assert submitted.json()["status"] == "IN_TESTING"
+    assert submitted.json()["assigned_tester_id"] == str(standard_users["tester"].id)
     tester_membership = next(
         member
         for member in submitted.json()["members"]
         if member["user"]["id"] == str(standard_users["tester"].id)
     )
-    assert tester_membership["role_in_project"] == "TESTER"
+    assert tester_membership["department"] in {"testing", "production", None}
 
     wrong_tester = client.post(
         f"/api/v1/projects/{project['id']}/test-result",

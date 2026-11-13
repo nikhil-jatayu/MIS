@@ -6,8 +6,8 @@ from uuid import UUID
 from pydantic import Field, field_validator, model_validator
 
 from app.models.enums import (
+    Department,
     Priority,
-    ProjectMemberRole,
     ProjectStatus,
     ProjectType,
     TestResult,
@@ -19,7 +19,7 @@ from app.schemas.user import UserSummary
 
 class ProjectMemberInput(ORMModel):
     user_id: UUID
-    role_in_project: ProjectMemberRole
+    department: Department | None = Field(default=None)
 
 
 class ProjectBOMInput(ORMModel):
@@ -34,6 +34,7 @@ class ProjectCreate(ORMModel):
     priority: Priority = Priority.MEDIUM
     start_date: date | None = None
     end_date: date | None = None
+    estimated_completion_date: date | None = None
     members: list[ProjectMemberInput] = Field(min_length=1)
     bom: list[ProjectBOMInput] = Field(default_factory=list)
 
@@ -51,6 +52,14 @@ class ProjectCreate(ORMModel):
     def validate_project(self) -> "ProjectCreate":
         if self.start_date and self.end_date and self.end_date < self.start_date:
             raise ValueError("End date must be on or after the start date")
+        if (
+            self.estimated_completion_date
+            and self.start_date
+            and self.estimated_completion_date < self.start_date
+        ):
+            raise ValueError(
+                "Estimated completion date must be on or after the start date"
+            )
         user_ids = [member.user_id for member in self.members]
         if len(user_ids) != len(set(user_ids)):
             raise ValueError("A user can only be assigned once per project")
@@ -98,7 +107,7 @@ class ProjectBOMUpdate(ORMModel):
 class ProjectMemberRead(ORMModel):
     id: UUID
     user: UserSummary
-    role_in_project: ProjectMemberRole
+    department: Department | None
 
 
 class ProjectBOMRead(ORMModel):
@@ -107,6 +116,10 @@ class ProjectBOMRead(ORMModel):
     quantity_required: int
     quantity_allocated: int
     quantity_shortage: int
+
+
+class EstimatedCompletionUpdate(ORMModel):
+    estimated_completion_date: date | None = None
 
 
 class ProjectRead(ORMModel):
@@ -118,6 +131,10 @@ class ProjectRead(ORMModel):
     priority: Priority
     start_date: date | None
     end_date: date | None
+    estimated_completion_date: date | None
+    estimated_completion_set_by: UUID | None
+    estimated_completion_set_at: datetime | None
+    estimated_completion_edited_by_member: bool
     created_by: UUID
     status_changed_at: datetime
     progress_percent: int
@@ -127,10 +144,13 @@ class ProjectRead(ORMModel):
     test_note: str | None
     tested_by: UUID | None
     tested_at: datetime | None
+    assigned_tester_id: UUID | None
     created_at: datetime
     updated_at: datetime
     creator: UserSummary
     tester: UserSummary | None
+    assigned_tester: UserSummary | None
+    estimate_setter: UserSummary | None
     members: list[ProjectMemberRead]
     bom_lines: list[ProjectBOMRead]
     is_inventory_ready: bool

@@ -11,7 +11,6 @@ from app.core.errors import ConflictError, ForbiddenError, NotFoundError, Unproc
 from app.models.enums import (
     ACTIVE_PROJECT_STATUSES,
     Priority,
-    ProjectMemberRole,
     ProjectStatus,
     ProjectType,
     TestResult,
@@ -23,6 +22,7 @@ from app.models.purchase import PurchaseRequest
 from app.models.user import User
 from app.schemas.common import Page
 from app.schemas.project import (
+    EstimatedCompletionUpdate,
     ProjectBOMInput,
     ProjectBOMUpdate,
     ProjectCreate,
@@ -39,6 +39,8 @@ def project_load_options() -> tuple:
     return (
         selectinload(Project.creator),
         selectinload(Project.tester),
+        selectinload(Project.assigned_tester),
+        selectinload(Project.estimate_setter),
         selectinload(Project.members).selectinload(ProjectMember.user),
         selectinload(Project.bom_lines).selectinload(ProjectBOM.item),
     )
@@ -70,16 +72,20 @@ def snapshot(project: Project) -> dict[str, Any]:
         "priority": project.priority,
         "start_date": project.start_date,
         "end_date": project.end_date,
+        "estimated_completion_date": project.estimated_completion_date,
+        "estimated_completion_set_by": project.estimated_completion_set_by,
+        "estimated_completion_set_at": project.estimated_completion_set_at,
         "progress_percent": project.progress_percent,
         "status_changed_at": project.status_changed_at,
         "delay_reason": project.delay_reason,
         "test_result": project.test_result,
         "test_note": project.test_note,
+        "assigned_tester_id": project.assigned_tester_id,
         "members": [
             {
                 "user_id": str(member.user_id),
                 "name": member.user.name,
-                "role_in_project": member.role_in_project,
+                "department": member.department,
             }
             for member in project.members
         ],
@@ -176,7 +182,7 @@ def _set_status(project: Project, status: ProjectStatus) -> None:
 
 
 def create_project(db: Session, *, actor: User, payload: ProjectCreate) -> Project:
-    _validate_members(db, payload.members)
+    users = _validate_members(db, payload.members)
     _validate_items(db, payload.bom)
 
     project = Project(
@@ -187,6 +193,11 @@ def create_project(db: Session, *, actor: User, payload: ProjectCreate) -> Proje
         priority=payload.priority,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        estimated_completion_date=payload.estimated_completion_date,
+        estimated_completion_set_by=actor.id if payload.estimated_completion_date else None,
+        estimated_completion_set_at=(
+            datetime.now(UTC) if payload.estimated_completion_date else None
+        ),
         created_by=actor.id,
         status_changed_at=datetime.now(UTC),
         progress_percent=0,
@@ -199,7 +210,7 @@ def create_project(db: Session, *, actor: User, payload: ProjectCreate) -> Proje
             ProjectMember(
                 project_id=project.id,
                 user_id=member.user_id,
-                role_in_project=member.role_in_project,
+                department=member.department or users[member.user_id].department,
             )
         )
     for line in payload.bom:
@@ -302,6 +313,12 @@ def update_project(
     if new_start and new_end and new_end < new_start:
         raise UnprocessableError("End date must be on or after the start date")
 
+    new_estimate = project.estimated_completion_date
+    if new_start and new_estimate and new_estimate < new_start:
+        raise UnprocessableError(
+            "Estimated completion date must be on or after the start date"
+        )
+
     deadline_changed = "end_date" in updates and updates["end_date"] != project.end_date
     for field, value in updates.items():
         setattr(project, field, value)
@@ -322,11 +339,57 @@ def update_project(
     return get_project(db, project_id)
 
 
+def update_estimated_completion(
+    db: Session, *, actor: User, project_id: UUID, payload: EstimatedCompletionUpdate
+) -> Project:
+    """Set the estimate once from the team, or any time by an Admin/Super Admin."""
+    project = get_project(db, project_id, for_update=True)
+    is_admin = actor.role in {UserRole.ADMIN, UserRole.SUPER_ADMIN}
+    is_assigned = any(member.user_id == actor.id for member in project.members)
+    if not (is_admin or is_assigned):
+        raise ForbiddenError(
+            "Only assigned team members or admins can update the estimated completion date"
+        )
+
+    estimated = payload.estimated_completion_date
+    if estimated and project.start_date and estimated < project.start_date:
+        raise UnprocessableError(
+            "Estimated completion date must be on or after the start date"
+        )
+    if not is_admin and project.estimated_completion_edited_by_member:
+        raise ConflictError(
+            "The estimated completion date has already been updated by the team",
+            code="ESTIMATE_LOCKED",
+        )
+    if estimated == project.estimated_completion_date:
+        return project
+
+    before = snapshot(project)
+    project.estimated_completion_date = estimated
+    project.estimated_completion_set_by = actor.id
+    project.estimated_completion_set_at = datetime.now(UTC)
+    if not is_admin:
+        project.estimated_completion_edited_by_member = True
+    db.flush()
+    project = get_project(db, project_id)
+    audit_service.record(
+        db,
+        actor_id=actor.id,
+        action="ESTIMATE_CHANGED",
+        entity="project",
+        entity_id=project.id,
+        before=before,
+        after=snapshot(project),
+    )
+    db.commit()
+    return get_project(db, project_id)
+
+
 def update_members(
     db: Session, *, actor: User, project_id: UUID, payload: ProjectMembersUpdate
 ) -> Project:
     project = get_project(db, project_id)
-    _validate_members(db, payload.members)
+    users = _validate_members(db, payload.members)
     before = snapshot(project)
     project.members.clear()
     db.flush()
@@ -335,7 +398,7 @@ def update_members(
             ProjectMember(
                 project_id=project.id,
                 user_id=member.user_id,
-                role_in_project=member.role_in_project,
+                department=member.department or users[member.user_id].department,
             )
         )
     db.flush()
@@ -483,16 +546,15 @@ def submit_for_testing(db: Session, *, actor: User, project_id: UUID, tester_id:
 
     before = snapshot(project)
     membership = next((member for member in project.members if member.user_id == tester_id), None)
-    if membership:
-        membership.role_in_project = ProjectMemberRole.TESTER
-    else:
+    if not membership:
         db.add(
             ProjectMember(
                 project_id=project.id,
                 user_id=tester_id,
-                role_in_project=ProjectMemberRole.TESTER,
+                department=tester.department,
             )
         )
+    project.assigned_tester_id = tester_id
     project.status = ProjectStatus.IN_TESTING
     project.status_changed_at = datetime.now(UTC)
     project.test_result = None
@@ -523,16 +585,9 @@ def record_test_result(
             "Test results can only be recorded while the project is in testing",
             code="INVALID_STATUS_TRANSITION",
         )
-    tester_membership = next(
-        (
-            member
-            for member in project.members
-            if member.user_id == actor.id and member.role_in_project == ProjectMemberRole.TESTER
-        ),
-        None,
-    )
-    if not tester_membership:
-        raise ForbiddenError("Only the assigned Tester can record a test result")
+    is_admin = actor.role in {UserRole.ADMIN, UserRole.SUPER_ADMIN}
+    if not is_admin and project.assigned_tester_id != actor.id:
+        raise ForbiddenError("Only the assigned tester or an admin can record a test result")
     before = snapshot(project)
     project.test_result = result
     project.test_note = note
@@ -565,7 +620,7 @@ def complete_project(db: Session, *, actor: User, project_id: UUID, note: str | 
         )
     if project.test_result != TestResult.PASS:
         raise ConflictError(
-            "The assigned Tester must mark the project as passed before sign-off",
+            "The assigned tester must mark the project as passed before sign-off",
             code="TEST_NOT_PASSED",
         )
     before = snapshot(project)

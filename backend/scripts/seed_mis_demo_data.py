@@ -19,8 +19,8 @@ from app.models.alert import Alert  # noqa: E402
 from app.models.audit import AuditLog  # noqa: E402
 from app.models.enums import (  # noqa: E402
     AlertType,
+    Department,
     Priority,
-    ProjectMemberRole,
     ProjectStatus,
     ProjectType,
     PurchaseRequestStatus,
@@ -61,7 +61,7 @@ PROJECT_SPECS = [
         "allocated": 120,
         "days_old": 18,
         "days_to_due": 6,
-        "member_role": ProjectMemberRole.PRODUCER,
+        "department": Department.PRODUCTION,
     },
     {
         "key": "PROJECT-02",
@@ -75,7 +75,7 @@ PROJECT_SPECS = [
         "allocated": 15,
         "days_old": 12,
         "days_to_due": 10,
-        "member_role": ProjectMemberRole.PRODUCER,
+        "department": Department.PRODUCTION,
     },
     {
         "key": "PROJECT-03",
@@ -89,7 +89,7 @@ PROJECT_SPECS = [
         "allocated": 60,
         "days_old": 20,
         "days_to_due": -2,
-        "member_role": ProjectMemberRole.PRODUCER,
+        "department": Department.PRODUCTION,
     },
     {
         "key": "PROJECT-04",
@@ -103,7 +103,7 @@ PROJECT_SPECS = [
         "allocated": 120,
         "days_old": 9,
         "days_to_due": 8,
-        "member_role": ProjectMemberRole.PRODUCER,
+        "department": Department.PRODUCTION,
     },
     {
         "key": "PROJECT-05",
@@ -117,7 +117,7 @@ PROJECT_SPECS = [
         "allocated": 100,
         "days_old": 16,
         "days_to_due": 2,
-        "member_role": ProjectMemberRole.TESTER,
+        "department": Department.TESTING,
     },
     {
         "key": "PROJECT-06",
@@ -131,7 +131,7 @@ PROJECT_SPECS = [
         "allocated": 80,
         "days_old": 35,
         "days_to_due": 0,
-        "member_role": ProjectMemberRole.TESTER,
+        "department": Department.TESTING,
     },
     {
         "key": "PROJECT-07",
@@ -145,7 +145,7 @@ PROJECT_SPECS = [
         "allocated": 50,
         "days_old": 5,
         "days_to_due": 20,
-        "member_role": ProjectMemberRole.DEVELOPER,
+        "department": Department.R_D,
     },
     {
         "key": "PROJECT-08",
@@ -159,7 +159,7 @@ PROJECT_SPECS = [
         "allocated": 100,
         "days_old": 7,
         "days_to_due": 15,
-        "member_role": ProjectMemberRole.PRODUCER,
+        "department": Department.PRODUCTION,
     },
 ]
 
@@ -277,6 +277,11 @@ def _create_projects(
             ),
             tested_by=(actor.id if spec["status"] == ProjectStatus.COMPLETED else None),
             tested_at=(changed_at if spec["status"] == ProjectStatus.COMPLETED else None),
+            assigned_tester_id=(
+                actor.id
+                if spec["status"] in {ProjectStatus.IN_TESTING, ProjectStatus.COMPLETED}
+                else None
+            ),
             created_at=changed_at,
             updated_at=changed_at,
         )
@@ -287,7 +292,7 @@ def _create_projects(
                 id=uuid4(),
                 project_id=project.id,
                 user_id=actor.id,
-                role_in_project=spec["member_role"],
+                department=spec["department"],
                 created_at=changed_at,
             )
         )
