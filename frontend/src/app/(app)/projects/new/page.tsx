@@ -38,23 +38,14 @@ import { loadAllInventory } from "@/lib/loaders";
 import type { Project, UserSummary } from "@/lib/types";
 import {
   buttonClass,
-  DEPARTMENT_LABELS,
-  DEPARTMENT_OPTIONS,
+  MEMBER_ROLE_LABELS,
   PRIORITY_LABELS,
   PROJECT_TYPE_LABELS,
 } from "@/lib/utils";
 
 const memberSchema = z.object({
   user_id: z.string().min(1, "Select a person"),
-  department: z.enum([
-    "management",
-    "R_D",
-    "production",
-    "assembly",
-    "testing",
-    "store",
-    "other",
-  ]),
+  role_in_project: z.enum(["DEVELOPER", "PRODUCER", "TESTER"]),
 });
 
 const bomLineSchema = z.object({
@@ -74,7 +65,6 @@ const projectSchema = z
     priority: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
     start_date: z.string(),
     end_date: z.string(),
-    estimated_completion_date: z.string(),
     members: z.array(memberSchema).min(1, "Assign at least one person"),
     bom: z.array(bomLineSchema),
   })
@@ -88,17 +78,6 @@ const projectSchema = z
         code: "custom",
         path: ["end_date"],
         message: "Deadline must be on or after the start date",
-      });
-    }
-    if (
-      values.start_date &&
-      values.estimated_completion_date &&
-      values.estimated_completion_date < values.start_date
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["estimated_completion_date"],
-        message: "Estimated completion must be on or after the start date",
       });
     }
     const userIds = values.members.map((member) => member.user_id);
@@ -149,7 +128,6 @@ function NewProjectContent() {
     register,
     control,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -160,8 +138,7 @@ function NewProjectContent() {
       priority: "MEDIUM",
       start_date: today,
       end_date: "",
-      estimated_completion_date: "",
-      members: [{ user_id: "", department: "R_D" }],
+      members: [{ user_id: "", role_in_project: "DEVELOPER" }],
       bom: [],
     },
   });
@@ -183,11 +160,7 @@ function NewProjectContent() {
           priority: values.priority,
           start_date: values.start_date || null,
           end_date: values.end_date || null,
-          estimated_completion_date: values.estimated_completion_date || null,
-          members: values.members.map((member) => ({
-            user_id: member.user_id,
-            department: member.department,
-          })),
+          members: values.members,
           bom: values.bom.map((line) => ({
             item_id: line.item_id,
             quantity_required: line.quantity_required,
@@ -308,18 +281,6 @@ function NewProjectContent() {
                 >
                   <Input id="end_date" type="date" {...register("end_date")} />
                 </Field>
-                <Field
-                  label="Estimated completion"
-                  htmlFor="estimated_completion_date"
-                  error={errors.estimated_completion_date?.message}
-                  hint="Planned finish date; shown alongside the deadline."
-                >
-                  <Input
-                    id="estimated_completion_date"
-                    type="date"
-                    {...register("estimated_completion_date")}
-                  />
-                </Field>
               </div>
             </div>
           </Card>
@@ -334,7 +295,7 @@ function NewProjectContent() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    members.append({ user_id: "", department: "R_D" })
+                    members.append({ user_id: "", role_in_project: "DEVELOPER" })
                   }
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -343,9 +304,7 @@ function NewProjectContent() {
               }
             />
             <div className="space-y-3 p-5">
-              {members.fields.map((field, index) => {
-                const userField = register(`members.${index}.user_id`);
-                return (
+              {members.fields.map((field, index) => (
                 <div
                   key={field.id}
                   className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-3 sm:grid-cols-[1fr_170px_36px]"
@@ -353,18 +312,7 @@ function NewProjectContent() {
                   <Field label="Person" htmlFor={`member-${index}`}>
                     <Select
                       id={`member-${index}`}
-                      {...userField}
-                      onChange={(event) => {
-                        userField.onChange(event);
-                        const person = peopleQuery.data?.find(
-                          (candidate) => candidate.id === event.target.value,
-                        );
-                        if (person?.department) {
-                          setValue(`members.${index}.department`, person.department, {
-                            shouldValidate: true,
-                          });
-                        }
-                      }}
+                      {...register(`members.${index}.user_id`)}
                     >
                       <option value="">Select a person</option>
                       {peopleQuery.data?.map((person) => (
@@ -381,14 +329,14 @@ function NewProjectContent() {
                       ))}
                     </Select>
                   </Field>
-                  <Field label="Department" htmlFor={`member-dept-${index}`}>
+                  <Field label="Project role" htmlFor={`member-role-${index}`}>
                     <Select
-                      id={`member-dept-${index}`}
-                      {...register(`members.${index}.department`)}
+                      id={`member-role-${index}`}
+                      {...register(`members.${index}.role_in_project`)}
                     >
-                      {DEPARTMENT_OPTIONS.map((value) => (
+                      {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => (
                         <option key={value} value={value}>
-                          {DEPARTMENT_LABELS[value]}
+                          {label}
                         </option>
                       ))}
                     </Select>
@@ -411,8 +359,7 @@ function NewProjectContent() {
                     </p>
                   ) : null}
                 </div>
-                );
-              })}
+              ))}
               {errors.members?.root?.message || errors.members?.message ? (
                 <p className="text-xs font-medium text-red-600">
                   {errors.members.root?.message ?? errors.members.message}

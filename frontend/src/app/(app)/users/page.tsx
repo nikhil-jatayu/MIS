@@ -17,12 +17,12 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { RequireRole } from "@/components/auth-gate";
-import { DepartmentBadge, RoleBadge } from "@/components/badges";
+import { RoleBadge } from "@/components/badges";
 import {
   AlertBanner,
   Button,
@@ -39,12 +39,10 @@ import {
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Department, Page, User, UserRole } from "@/lib/types";
+import type { Page, User, UserRole } from "@/lib/types";
 import { useDebouncedValue } from "@/lib/use-debounced";
 import {
   buildQuery,
-  DEPARTMENT_LABELS,
-  DEPARTMENT_OPTIONS,
   formatDate,
   formatDateTime,
   ROLE_LABELS,
@@ -54,51 +52,25 @@ const ROLES = Object.keys(ROLE_LABELS) as UserRole[];
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
 
-const departmentField = z.union([z.literal(""), z.enum(DEPARTMENT_OPTIONS)]);
-
-const createSchema = z
-  .object({
-    name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
-    email: z.email("Enter a valid email address"),
-    role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
-    department: departmentField,
-    department_other: z.string().max(100).optional(),
-    temporary_password: z
-      .string()
-      .regex(
-        PASSWORD_PATTERN,
-        "Use 8+ characters with uppercase, lowercase, a number, and a special character",
-      ),
-  })
-  .superRefine((values, context) => {
-    if (values.department === "other" && !values.department_other?.trim()) {
-      context.addIssue({
-        code: "custom",
-        path: ["department_other"],
-        message: "Describe the department",
-      });
-    }
-  });
+const createSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
+  email: z.email("Enter a valid email address"),
+  role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
+  temporary_password: z
+    .string()
+    .regex(
+      PASSWORD_PATTERN,
+      "Use 8+ characters with uppercase, lowercase, a number, and a special character",
+    ),
+});
 
 type CreateValues = z.infer<typeof createSchema>;
 
-const editSchema = z
-  .object({
-    name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
-    role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
-    department: departmentField,
-    department_other: z.string().max(100).optional(),
-    is_active: z.boolean(),
-  })
-  .superRefine((values, context) => {
-    if (values.department === "other" && !values.department_other?.trim()) {
-      context.addIssue({
-        code: "custom",
-        path: ["department_other"],
-        message: "Describe the department",
-      });
-    }
-  });
+const editSchema = z.object({
+  name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
+  role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
+  is_active: z.boolean(),
+});
 
 type EditValues = z.infer<typeof editSchema>;
 
@@ -119,18 +91,6 @@ const resetSchema = z
 
 type ResetValues = z.infer<typeof resetSchema>;
 
-function departmentPayload(
-  department: "" | Department,
-  other?: string,
-): { department: Department | null; department_other: string | null } {
-  if (!department) return { department: null, department_other: null };
-  return {
-    department,
-    department_other:
-      department === "other" ? (other?.trim() ? other.trim() : null) : null,
-  };
-}
-
 type UserAction =
   | { type: "create" }
   | { type: "edit"; user: User }
@@ -148,14 +108,13 @@ export default function UsersPage() {
 function UsersContent() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<UserRole | "">("");
-  const [department, setDepartment] = useState<Department | "">("");
   const [active, setActive] = useState<"" | "true" | "false">("");
   const [page, setPage] = useState(1);
   const [action, setAction] = useState<UserAction>(null);
   const debouncedSearch = useDebouncedValue(search);
 
   const query = useQuery({
-    queryKey: ["users", { q: debouncedSearch, role, department, active, page }],
+    queryKey: ["users", { q: debouncedSearch, role, active, page }],
     queryFn: () =>
       apiFetch<Page<User>>(
         `/users${buildQuery({
@@ -163,7 +122,6 @@ function UsersContent() {
           page_size: 20,
           q: debouncedSearch,
           role,
-          department,
           is_active: active || undefined,
         })}`,
       ),
@@ -185,7 +143,7 @@ function UsersContent() {
       />
 
       <Card className="mb-5 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_170px_170px_160px]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_180px_160px]">
           <Field label="Search users" htmlFor="user-search">
             <div className="relative">
               <Search className="pointer-events-none absolute top-3 left-3 h-4 w-4 text-slate-400" />
@@ -214,23 +172,6 @@ function UsersContent() {
               {ROLES.map((item) => (
                 <option key={item} value={item}>
                   {ROLE_LABELS[item]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Department" htmlFor="user-department">
-            <Select
-              id="user-department"
-              value={department}
-              onChange={(event) => {
-                setDepartment(event.target.value as Department | "");
-                setPage(1);
-              }}
-            >
-              <option value="">All departments</option>
-              {DEPARTMENT_OPTIONS.map((item) => (
-                <option key={item} value={item}>
-                  {DEPARTMENT_LABELS[item]}
                 </option>
               ))}
             </Select>
@@ -304,7 +245,6 @@ function UsersContent() {
                 <tr>
                   <th className="px-5 py-3">User</th>
                   <th className="px-5 py-3">Role</th>
-                  <th className="px-5 py-3">Department</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Last sign-in</th>
                   <th className="px-5 py-3">Password</th>
@@ -320,12 +260,6 @@ function UsersContent() {
                     </td>
                     <td className="px-5 py-3.5">
                       <RoleBadge role={user.role} />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <DepartmentBadge
-                        department={user.department}
-                        other={user.department_other}
-                      />
                     </td>
                     <td className="px-5 py-3.5">
                       <span
@@ -425,7 +359,6 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const {
     register,
-    control,
     handleSubmit,
     formState: { errors },
   } = useForm<CreateValues>({
@@ -434,21 +367,15 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       name: "",
       email: "",
       role: "USER",
-      department: "",
-      department_other: "",
       temporary_password: "",
     },
   });
-  const selectedDepartment = useWatch({ control, name: "department" });
 
   const mutation = useMutation({
     mutationFn: (values: CreateValues) =>
       apiFetch<User>("/users", {
         method: "POST",
-        body: JSON.stringify({
-          ...values,
-          ...departmentPayload(values.department, values.department_other),
-        }),
+        body: JSON.stringify(values),
       }),
     onSuccess: (user) => {
       void queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -506,35 +433,6 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
           </Select>
         </Field>
         <Field
-          label="Department"
-          htmlFor="new-user-department"
-          error={errors.department?.message}
-          hint="Used to route projects and alerts to the right team."
-        >
-          <Select id="new-user-department" {...register("department")}>
-            <option value="">Unassigned</option>
-            {DEPARTMENT_OPTIONS.map((department) => (
-              <option key={department} value={department}>
-                {DEPARTMENT_LABELS[department]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {selectedDepartment === "other" ? (
-          <Field
-            label="Department name"
-            htmlFor="new-user-department-other"
-            error={errors.department_other?.message}
-            required
-          >
-            <Input
-              id="new-user-department-other"
-              placeholder="e.g. Fabrication"
-              {...register("department_other")}
-            />
-          </Field>
-        ) : null}
-        <Field
           label="Temporary password"
           htmlFor="new-user-password"
           error={errors.temporary_password?.message}
@@ -567,7 +465,6 @@ function EditUserModal({
 
   const {
     register,
-    control,
     handleSubmit,
     formState: { errors },
   } = useForm<EditValues>({
@@ -575,21 +472,15 @@ function EditUserModal({
     defaultValues: {
       name: user.name,
       role: user.role,
-      department: user.department ?? "",
-      department_other: user.department_other ?? "",
       is_active: user.is_active,
     },
   });
-  const selectedDepartment = useWatch({ control, name: "department" });
 
   const mutation = useMutation({
     mutationFn: (values: EditValues) =>
       apiFetch<User>(`/users/${user.id}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          ...values,
-          ...departmentPayload(values.department, values.department_other),
-        }),
+        body: JSON.stringify(values),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -639,34 +530,6 @@ function EditUserModal({
             ))}
           </Select>
         </Field>
-        <Field
-          label="Department"
-          htmlFor="edit-user-department"
-          error={errors.department?.message}
-        >
-          <Select id="edit-user-department" {...register("department")}>
-            <option value="">Unassigned</option>
-            {DEPARTMENT_OPTIONS.map((department) => (
-              <option key={department} value={department}>
-                {DEPARTMENT_LABELS[department]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        {selectedDepartment === "other" ? (
-          <Field
-            label="Department name"
-            htmlFor="edit-user-department-other"
-            error={errors.department_other?.message}
-            required
-          >
-            <Input
-              id="edit-user-department-other"
-              placeholder="e.g. Fabrication"
-              {...register("department_other")}
-            />
-          </Field>
-        ) : null}
         <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <input
             type="checkbox"

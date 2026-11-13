@@ -8,7 +8,7 @@ from sqlalchemy import Boolean, DateTime, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
-from app.models.enums import Department, UserRole
+from app.models.enums import UserRole
 from app.models.types import enum_type
 
 if TYPE_CHECKING:
@@ -23,12 +23,6 @@ class User(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     role: Mapped[UserRole] = mapped_column(
         enum_type(UserRole, "user_role", 30), nullable=False, index=True
-    )
-    department: Mapped[Department | None] = mapped_column(
-        enum_type(Department, "department", 20), nullable=True, index=True
-    )
-    department_other: Mapped[str | None] = mapped_column(
-        String(100), nullable=True, comment="Department description when OTHER is selected"
     )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

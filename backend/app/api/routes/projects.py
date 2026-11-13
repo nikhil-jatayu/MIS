@@ -10,7 +10,6 @@ from app.models.enums import Priority, ProjectStatus, ProjectType
 from app.schemas.common import Page
 from app.schemas.project import (
     CompleteProjectRequest,
-    EstimatedCompletionUpdate,
     ProjectBOMUpdate,
     ProjectCreate,
     ProjectMembersUpdate,
@@ -83,19 +82,6 @@ def update_project(
     actor: AdminUser,
 ) -> ProjectRead:
     project = project_service.update_project(
-        db, actor=actor, project_id=project_id, payload=payload
-    )
-    return ProjectRead.model_validate(project)
-
-
-@router.patch("/{project_id}/estimate", response_model=ProjectRead)
-def update_estimate(
-    project_id: UUID,
-    payload: EstimatedCompletionUpdate,
-    db: DatabaseSession,
-    actor: CurrentUser,
-) -> ProjectRead:
-    project = project_service.update_estimated_completion(
         db, actor=actor, project_id=project_id, payload=payload
     )
     return ProjectRead.model_validate(project)

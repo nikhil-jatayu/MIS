@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, validate_password_strength
-from app.models.enums import Department, UserRole
+from app.models.enums import UserRole
 from app.models.setting import Setting
 from app.models.user import User
 from app.services import settings_service
@@ -15,8 +15,8 @@ from app.services import settings_service
 logger = logging.getLogger(__name__)
 
 SEED_SUPER_ADMINS = (
-    ("Ashmant", "ashmant@jatayues.com", "Ashmant@123", Department.MANAGEMENT),
-    ("Ratna", "ratna@jatayues.com", "Ratna@123", Department.MANAGEMENT),
+    ("Ashmant", "ashmant@jatayues.com", "Ashmant@123"),
+    ("Ratna", "ratna@jatayues.com", "Ratna@123"),
 )
 
 
@@ -28,23 +28,17 @@ def _capitalise_first_character(value: str) -> str:
 
 def seed_database(db: Session) -> dict[str, Any]:
     created = 0
-    for name, email, password, department in SEED_SUPER_ADMINS:
+    for name, email, password in SEED_SUPER_ADMINS:
         validate_password_strength(password)
         existing = db.scalar(select(User).where(func.lower(User.email) == email.lower()))
         if existing:
-            # Backfill department for users seeded before the department field existed.
-            if existing.department is None and department is not None:
-                existing.department = department
-                logger.info("Backfilled department for seed user: %s", email)
-            else:
-                logger.info("Seed user already exists: %s", email)
+            logger.info("Seed user already exists: %s", email)
             continue
         db.add(
             User(
                 name=_capitalise_first_character(name),
                 email=email.lower(),
                 role=UserRole.SUPER_ADMIN,
-                department=department,
                 password_hash=hash_password(password),
                 is_active=True,
                 must_change_password=True,
