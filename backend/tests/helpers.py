@@ -31,6 +31,7 @@ def create_project(
     bom: list[tuple[str, int]] | None = None,
     project_type: str = "PRODUCTION",
     priority: str = "HIGH",
+    start_date: date | None = None,
     end_date: date | None = None,
     estimated_completion_date: date | None = None,
 ) -> dict:
@@ -39,7 +40,7 @@ def create_project(
         "description": "Project created by the automated test suite",
         "type": project_type,
         "priority": priority,
-        "start_date": date.today().isoformat(),
+        "start_date": (start_date or date.today()).isoformat(),
         "end_date": (end_date or (date.today() + timedelta(days=30))).isoformat(),
         "estimated_completion_date": (
             estimated_completion_date.isoformat() if estimated_completion_date else None

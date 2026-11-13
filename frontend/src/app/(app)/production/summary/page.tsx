@@ -111,10 +111,10 @@ export default function ProductionSummaryPage() {
                     <Kpi label="Planned quantity" value={formatQuantity(unit.planned_quantity, unit.unit_of_measure)} />
                     <Kpi label="Actual quantity" value={formatQuantity(unit.actual_quantity, unit.unit_of_measure)} />
                     <Kpi label="Accepted quantity" value={formatQuantity(unit.accepted_quantity, unit.unit_of_measure)} />
-                    <Kpi label="Rejected quantity" value={formatQuantity(unit.rejected_quantity, unit.unit_of_measure)} />
+                    <Kpi label="First-pass non-acceptance" value={formatQuantity(unit.rejected_quantity, unit.unit_of_measure)} />
                     <Kpi label="Plan achievement" value={formatPercent(unit.plan_achievement_percent)} />
                     <Kpi label="First pass yield" value={formatPercent(unit.first_pass_yield_percent)} />
-                    <Kpi label="Rejection rate" value={formatPercent(unit.rejection_percent)} />
+                    <Kpi label="First-pass non-acceptance rate" value={formatPercent(unit.rejection_percent)} />
                     <Kpi label="Downtime" value={`${unit.downtime_hours.toFixed(2)} h (${formatPercent(unit.downtime_percent)})`} />
                     <Kpi label="Rework quantity" value={formatQuantity(unit.rework_quantity, unit.unit_of_measure)} />
                     <Kpi label="Production hours" value={`${unit.production_hours.toFixed(2)} h`} />

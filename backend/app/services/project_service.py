@@ -315,9 +315,7 @@ def update_project(
 
     new_estimate = project.estimated_completion_date
     if new_start and new_estimate and new_estimate < new_start:
-        raise UnprocessableError(
-            "Estimated completion date must be on or after the start date"
-        )
+        raise UnprocessableError("Estimated completion date must be on or after the start date")
 
     deadline_changed = "end_date" in updates and updates["end_date"] != project.end_date
     for field, value in updates.items():
@@ -353,9 +351,7 @@ def update_estimated_completion(
 
     estimated = payload.estimated_completion_date
     if estimated and project.start_date and estimated < project.start_date:
-        raise UnprocessableError(
-            "Estimated completion date must be on or after the start date"
-        )
+        raise UnprocessableError("Estimated completion date must be on or after the start date")
     if not is_admin and project.estimated_completion_edited_by_member:
         raise ConflictError(
             "The estimated completion date has already been updated by the team",
@@ -391,6 +387,14 @@ def update_members(
     project = get_project(db, project_id)
     users = _validate_members(db, payload.members)
     before = snapshot(project)
+
+    retained_member_ids = {member.user_id for member in payload.members}
+    if (
+        project.assigned_tester_id is not None
+        and project.assigned_tester_id not in retained_member_ids
+    ):
+        project.assigned_tester_id = None
+
     project.members.clear()
     db.flush()
     for member in payload.members:
