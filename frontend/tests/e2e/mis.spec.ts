@@ -179,7 +179,7 @@ test.describe("authenticated MIS workspace", () => {
         priority: "HIGH",
         start_date: new Date().toISOString().slice(0, 10),
         end_date: endDate.toISOString().slice(0, 10),
-        members: [{ user_id: me.id, role_in_project: "DEVELOPER" }],
+        members: [{ user_id: me.id, department: "production" }],
         bom: [{ item_id: item.id, quantity_required: 5 }],
       },
     });

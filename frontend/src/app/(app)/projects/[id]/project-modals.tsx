@@ -15,14 +15,15 @@ import {
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import type {
+  Department,
   InventoryItem,
   Project,
-  ProjectMemberRole,
   TestResult,
   UserSummary,
 } from "@/lib/types";
 import {
-  MEMBER_ROLE_LABELS,
+  DEPARTMENT_LABELS,
+  DEPARTMENT_OPTIONS,
   PRIORITY_LABELS,
   TEST_RESULT_LABELS,
 } from "@/lib/utils";
@@ -166,6 +167,103 @@ export function EditProjectModal({
   );
 }
 
+export function EstimateModal({
+  project,
+  isAdmin,
+  onClose,
+}: {
+  project: Project;
+  isAdmin: boolean;
+  onClose: () => void;
+}) {
+  const refresh = useRefreshProject(project.id);
+  const [estimate, setEstimate] = useState(
+    project.estimated_completion_date ?? "",
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      apiFetch<Project>(`/projects/${project.id}/estimate`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          estimated_completion_date: estimate || null,
+        }),
+      }),
+    onSuccess: () => {
+      refresh();
+      toast.success("Estimated completion date updated");
+      onClose();
+    },
+    onError: (mutationError) => {
+      setError(errorMessage(mutationError));
+      toast.error(errorMessage(mutationError));
+    },
+  });
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={project.estimated_completion_date ? "Revise estimate" : "Set estimate"}
+      description={
+        isAdmin
+          ? "Admins can change the estimate at any time; every change is audited."
+          : "Team members can set the estimate once. Ask an admin for later revisions."
+      }
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (estimate && project.start_date && estimate < project.start_date) {
+                setError("Estimated completion must be on or after the start date.");
+                return;
+              }
+              mutation.mutate();
+            }}
+            loading={mutation.isPending}
+          >
+            Save estimate
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Field
+          label="Estimated completion"
+          htmlFor="estimate-date"
+          hint={
+            project.start_date
+              ? `Must be on or after the start date (${project.start_date}).`
+              : "Planned finish date for this project."
+          }
+        >
+          <Input
+            id="estimate-date"
+            type="date"
+            value={estimate}
+            onChange={(event) => setEstimate(event.target.value)}
+          />
+        </Field>
+        {project.estimated_completion_set_at && project.estimate_setter ? (
+          <p className="text-xs leading-5 text-slate-500">
+            Last updated by {project.estimate_setter.name}.
+          </p>
+        ) : null}
+        {error ? (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </Modal>
+  );
+}
+
 export function MembersModal({
   project,
   users,
@@ -177,14 +275,15 @@ export function MembersModal({
 }) {
   const refresh = useRefreshProject(project.id);
   const [rows, setRows] = useState<
-    { user_id: string; role_in_project: ProjectMemberRole }[]
+    { user_id: string; department: Department }[]
   >(
     project.members.length
       ? project.members.map((member) => ({
           user_id: member.user.id,
-          role_in_project: member.role_in_project,
+          department:
+            member.department ?? member.user.department ?? "production",
         }))
-      : [{ user_id: "", role_in_project: "DEVELOPER" }],
+      : [{ user_id: "", department: "production" }],
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -260,15 +359,24 @@ export function MembersModal({
                 <Select
                   id={`member-existing-${index}`}
                   value={row.user_id}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const userId = event.target.value;
+                    const person = options.find(
+                      (candidate) => candidate.id === userId,
+                    );
                     setRows((current) =>
                       current.map((item, itemIndex) =>
                         itemIndex === index
-                          ? { ...item, user_id: event.target.value }
+                          ? {
+                              ...item,
+                              user_id: userId,
+                              department:
+                                person?.department ?? item.department,
+                            }
                           : item,
                       ),
-                    )
-                  }
+                    );
+                  }}
                 >
                   <option value="">Select a person</option>
                   {options.map((person) => (
@@ -285,27 +393,26 @@ export function MembersModal({
                   ))}
                 </Select>
               </Field>
-              <Field label="Project role" htmlFor={`member-existing-role-${index}`}>
+              <Field label="Department" htmlFor={`member-existing-dept-${index}`}>
                 <Select
-                  id={`member-existing-role-${index}`}
-                  value={row.role_in_project}
+                  id={`member-existing-dept-${index}`}
+                  value={row.department}
                   onChange={(event) =>
                     setRows((current) =>
                       current.map((item, itemIndex) =>
                         itemIndex === index
                           ? {
                               ...item,
-                              role_in_project: event.target
-                                .value as ProjectMemberRole,
+                              department: event.target.value as Department,
                             }
                           : item,
                       ),
                     )
                   }
                 >
-                  {Object.entries(MEMBER_ROLE_LABELS).map(([value, label]) => (
+                  {DEPARTMENT_OPTIONS.map((value) => (
                     <option key={value} value={value}>
-                      {label}
+                      {DEPARTMENT_LABELS[value]}
                     </option>
                   ))}
                 </Select>
@@ -330,7 +437,7 @@ export function MembersModal({
           onClick={() =>
             setRows((current) => [
               ...current,
-              { user_id: "", role_in_project: "DEVELOPER" },
+              { user_id: "", department: "production" },
             ])
           }
         >
@@ -643,9 +750,7 @@ export function SubmitTestingModal({
   onClose: () => void;
 }) {
   const refresh = useRefreshProject(project.id);
-  const currentTester =
-    project.members.find((member) => member.role_in_project === "TESTER")?.user.id ??
-    "";
+  const currentTester = project.assigned_tester_id ?? "";
   const [testerId, setTesterId] = useState(currentTester);
   const [error, setError] = useState<string | null>(null);
 
@@ -671,7 +776,7 @@ export function SubmitTestingModal({
       open
       onClose={onClose}
       title="Submit for testing"
-      description="Select the QA Tester who will record the pass or fail result."
+      description="Select the QA tester who will record the pass or fail result."
       size="sm"
       footer={
         <>
@@ -700,7 +805,7 @@ export function SubmitTestingModal({
             value={testerId}
             onChange={(event) => setTesterId(event.target.value)}
           >
-            <option value="">Select a Tester</option>
+            <option value="">Select a tester</option>
             {users.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.name} · {person.email}
@@ -709,8 +814,8 @@ export function SubmitTestingModal({
           </Select>
         </Field>
         <p className="text-xs leading-5 text-slate-500">
-          The selected person is added as a Tester if they are not already on the
-          project. The project moves to In Testing.
+          The selected person is added to the project team if they are not already
+          a member, and is the only non-admin who can record the test result.
         </p>
         {error ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
@@ -760,7 +865,7 @@ export function TestResultModal({
       open
       onClose={onClose}
       title="Record test result"
-      description="Only the assigned Tester can record this result."
+      description="Only the assigned tester or an admin can record this result."
       size="sm"
       footer={
         <>

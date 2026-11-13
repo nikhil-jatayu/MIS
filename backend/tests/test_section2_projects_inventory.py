@@ -222,7 +222,7 @@ def test_project_updates_deadline_audit_and_role_restrictions(
             "type": "PRODUCTION",
             "priority": "LOW",
             "members": [
-                {"user_id": str(standard_users["user"].id), "role_in_project": "DEVELOPER"}
+                {"user_id": str(standard_users["user"].id), "department": "R_D"}
             ],
             "bom": [],
         },

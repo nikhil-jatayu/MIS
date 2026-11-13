@@ -17,12 +17,12 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { RequireRole } from "@/components/auth-gate";
-import { RoleBadge } from "@/components/badges";
+import { DepartmentBadge, RoleBadge } from "@/components/badges";
 import {
   AlertBanner,
   Button,
@@ -39,10 +39,12 @@ import {
 } from "@/components/ui";
 import { apiFetch, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import type { Page, User, UserRole } from "@/lib/types";
+import type { Department, Page, User, UserRole } from "@/lib/types";
 import { useDebouncedValue } from "@/lib/use-debounced";
 import {
   buildQuery,
+  DEPARTMENT_LABELS,
+  DEPARTMENT_OPTIONS,
   formatDate,
   formatDateTime,
   ROLE_LABELS,
@@ -52,25 +54,51 @@ const ROLES = Object.keys(ROLE_LABELS) as UserRole[];
 const PASSWORD_PATTERN =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,128}$/;
 
-const createSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
-  email: z.email("Enter a valid email address"),
-  role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
-  temporary_password: z
-    .string()
-    .regex(
-      PASSWORD_PATTERN,
-      "Use 8+ characters with uppercase, lowercase, a number, and a special character",
-    ),
-});
+const departmentSchema = z.union([z.literal(""), z.enum(DEPARTMENT_OPTIONS)]);
+
+const createSchema = z
+  .object({
+    name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
+    email: z.email("Enter a valid email address"),
+    role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
+    department: departmentSchema,
+    department_other: z.string().max(100),
+    temporary_password: z
+      .string()
+      .regex(
+        PASSWORD_PATTERN,
+        "Use 8+ characters with uppercase, lowercase, a number, and a special character",
+      ),
+  })
+  .superRefine((values, context) => {
+    if (values.department === "other" && !values.department_other.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["department_other"],
+        message: "Describe the department",
+      });
+    }
+  });
 
 type CreateValues = z.infer<typeof createSchema>;
 
-const editSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
-  role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
-  is_active: z.boolean(),
-});
+const editSchema = z
+  .object({
+    name: z.string().trim().min(2, "Name must be at least 2 characters").max(150),
+    role: z.enum(["SUPER_ADMIN", "ADMIN", "USER"]),
+    department: departmentSchema,
+    department_other: z.string().max(100),
+    is_active: z.boolean(),
+  })
+  .superRefine((values, context) => {
+    if (values.department === "other" && !values.department_other.trim()) {
+      context.addIssue({
+        code: "custom",
+        path: ["department_other"],
+        message: "Describe the department",
+      });
+    }
+  });
 
 type EditValues = z.infer<typeof editSchema>;
 
@@ -108,13 +136,14 @@ export default function UsersPage() {
 function UsersContent() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<UserRole | "">("");
+  const [department, setDepartment] = useState<Department | "">("");
   const [active, setActive] = useState<"" | "true" | "false">("");
   const [page, setPage] = useState(1);
   const [action, setAction] = useState<UserAction>(null);
   const debouncedSearch = useDebouncedValue(search);
 
   const query = useQuery({
-    queryKey: ["users", { q: debouncedSearch, role, active, page }],
+    queryKey: ["users", { q: debouncedSearch, role, department, active, page }],
     queryFn: () =>
       apiFetch<Page<User>>(
         `/users${buildQuery({
@@ -122,6 +151,7 @@ function UsersContent() {
           page_size: 20,
           q: debouncedSearch,
           role,
+          department,
           is_active: active || undefined,
         })}`,
       ),
@@ -133,7 +163,7 @@ function UsersContent() {
       <PageHeader
         eyebrow="Administration"
         title="Users"
-        description="Create user accounts with email addresses, assign roles, deactivate access, and reset temporary passwords."
+        description="Create user accounts with email addresses, assign roles and departments, deactivate access, and reset temporary passwords."
         actions={
           <Button onClick={() => setAction({ type: "create" })}>
             <Plus className="h-4 w-4" />
@@ -143,7 +173,7 @@ function UsersContent() {
       />
 
       <Card className="mb-5 p-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_180px_160px]">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_160px_160px_160px]">
           <Field label="Search users" htmlFor="user-search">
             <div className="relative">
               <Search className="pointer-events-none absolute top-3 left-3 h-4 w-4 text-slate-400" />
@@ -172,6 +202,23 @@ function UsersContent() {
               {ROLES.map((item) => (
                 <option key={item} value={item}>
                   {ROLE_LABELS[item]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Department" htmlFor="user-department">
+            <Select
+              id="user-department"
+              value={department}
+              onChange={(event) => {
+                setDepartment(event.target.value as Department | "");
+                setPage(1);
+              }}
+            >
+              <option value="">All departments</option>
+              {DEPARTMENT_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {DEPARTMENT_LABELS[item]}
                 </option>
               ))}
             </Select>
@@ -240,11 +287,12 @@ function UsersContent() {
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[1000px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
                 <tr>
                   <th className="px-5 py-3">User</th>
                   <th className="px-5 py-3">Role</th>
+                  <th className="px-5 py-3">Department</th>
                   <th className="px-5 py-3">Status</th>
                   <th className="px-5 py-3">Last sign-in</th>
                   <th className="px-5 py-3">Password</th>
@@ -260,6 +308,12 @@ function UsersContent() {
                     </td>
                     <td className="px-5 py-3.5">
                       <RoleBadge role={user.role} />
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <DepartmentBadge
+                        department={user.department}
+                        other={user.department_other}
+                      />
                     </td>
                     <td className="px-5 py-3.5">
                       <span
@@ -360,6 +414,7 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
@@ -367,15 +422,25 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
       name: "",
       email: "",
       role: "USER",
+      department: "",
+      department_other: "",
       temporary_password: "",
     },
   });
+  const selectedDepartment = useWatch({ control, name: "department" });
 
   const mutation = useMutation({
     mutationFn: (values: CreateValues) =>
       apiFetch<User>("/users", {
         method: "POST",
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          department: values.department || null,
+          department_other:
+            values.department === "other"
+              ? values.department_other.trim()
+              : null,
+        }),
       }),
     onSuccess: (user) => {
       void queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -432,6 +497,36 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             ))}
           </Select>
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Department"
+            htmlFor="new-user-department"
+            error={errors.department?.message}
+          >
+            <Select id="new-user-department" {...register("department")}>
+              <option value="">Not assigned</option>
+              {DEPARTMENT_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {DEPARTMENT_LABELS[item]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {selectedDepartment === "other" ? (
+            <Field
+              label="Department name"
+              htmlFor="new-user-department-other"
+              error={errors.department_other?.message}
+              required
+            >
+              <Input
+                id="new-user-department-other"
+                placeholder="e.g. Fabrication"
+                {...register("department_other")}
+              />
+            </Field>
+          ) : null}
+        </div>
         <Field
           label="Temporary password"
           htmlFor="new-user-password"
@@ -466,21 +561,32 @@ function EditUserModal({
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<EditValues>({
     resolver: zodResolver(editSchema),
     defaultValues: {
       name: user.name,
       role: user.role,
+      department: user.department ?? "",
+      department_other: user.department_other ?? "",
       is_active: user.is_active,
     },
   });
+  const selectedDepartment = useWatch({ control, name: "department" });
 
   const mutation = useMutation({
     mutationFn: (values: EditValues) =>
       apiFetch<User>(`/users/${user.id}`, {
         method: "PATCH",
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          department: values.department || null,
+          department_other:
+            values.department === "other"
+              ? values.department_other.trim()
+              : null,
+        }),
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["users"] });
@@ -530,6 +636,36 @@ function EditUserModal({
             ))}
           </Select>
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Department"
+            htmlFor="edit-user-department"
+            error={errors.department?.message}
+          >
+            <Select id="edit-user-department" {...register("department")}>
+              <option value="">Not assigned</option>
+              {DEPARTMENT_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {DEPARTMENT_LABELS[item]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {selectedDepartment === "other" ? (
+            <Field
+              label="Department name"
+              htmlFor="edit-user-department-other"
+              error={errors.department_other?.message}
+              required
+            >
+              <Input
+                id="edit-user-department-other"
+                placeholder="e.g. Fabrication"
+                {...register("department_other")}
+              />
+            </Field>
+          ) : null}
+        </div>
         <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
           <input
             type="checkbox"

@@ -32,7 +32,7 @@ You are a senior full-stack engineer. Build v1 of an R&D and Production Manageme
 
 - users: id, name, email, role, password_hash, is_active, must_change_password
 - projects: id, name, description, type (R&D|PRODUCTION), status, priority (LOW|MEDIUM|HIGH|CRITICAL), start_date, end_date, created_by, status_changed_at
-- project_members: project_id, user_id, role_in_project (DEVELOPER|PRODUCER|TESTER)
+- project_members: project_id, user_id, department
 - inventory_items: id, name, sku, quantity_available
 - project_bom: project_id, item_id, quantity_required, quantity_allocated
 - purchase_requests: id, project_id, item_id, quantity, requested_by, status (PENDING|APPROVED|REJECTED|ORDERED|DELIVERED), reason, approved_by

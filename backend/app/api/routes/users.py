@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query
 
 from app.core.deps import AdminUser, DatabaseSession, Pagination, SuperAdminUser
-from app.models.enums import UserRole
+from app.models.enums import Department, UserRole
 from app.schemas.common import Page
 from app.schemas.user import (
     PasswordResetRequest,
@@ -35,6 +35,7 @@ def list_users(
     _: AdminUser,
     q: str | None = Query(default=None, max_length=200),
     role: UserRole | None = None,
+    department: Department | None = None,
     is_active: bool | None = None,
 ) -> Page[UserRead]:
     return user_service.list_users(
@@ -43,6 +44,7 @@ def list_users(
         page_size=pagination.page_size,
         q=q,
         role=role,
+        department=department,
         is_active=is_active,
     )
 

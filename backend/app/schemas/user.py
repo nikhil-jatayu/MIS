@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import EmailStr, Field, field_validator, model_validator
+from pydantic import EmailStr, Field, ValidationInfo, field_validator, model_validator
 
 from app.core.security import PasswordPolicyError, validate_password_strength
-from app.models.enums import UserRole
+from app.models.enums import Department, UserRole
 from app.schemas.common import ORMModel
 
 
@@ -16,6 +16,18 @@ def _validate_password(value: str) -> str:
     except PasswordPolicyError as exc:
         raise ValueError("; ".join(exc.errors)) from exc
     return value
+
+
+def _validate_department_other(
+    department: Department | None, other: str | None
+) -> str | None:
+    """Normalise the free-text department label and require it for OTHER."""
+    cleaned = other.strip() if other else None
+    if department == Department.OTHER and not cleaned:
+        raise ValueError("A description is required when department is 'other'")
+    if department is not None and department != Department.OTHER:
+        return None
+    return cleaned
 
 
 class LoginRequest(ORMModel):
@@ -28,6 +40,8 @@ class UserSummary(ORMModel):
     name: str
     email: EmailStr
     role: UserRole
+    department: Department | None = None
+    department_other: str | None = None
     is_active: bool
 
 
@@ -62,6 +76,10 @@ class UserCreate(ORMModel):
     name: str = Field(min_length=2, max_length=150)
     email: EmailStr
     role: UserRole = UserRole.USER
+    department: Department | None = None
+    department_other: str | None = Field(
+        default=None, max_length=100, validate_default=True
+    )
     temporary_password: str = Field(min_length=8, max_length=128)
 
     _validate_temporary_password = field_validator("temporary_password")(_validate_password)
@@ -71,10 +89,19 @@ class UserCreate(ORMModel):
     def strip_name(cls, value: str) -> str:
         return value.strip()
 
+    @field_validator("department_other")
+    @classmethod
+    def validate_department_other(
+        cls, value: str | None, info: ValidationInfo
+    ) -> str | None:
+        return _validate_department_other(info.data.get("department"), value)
+
 
 class UserUpdate(ORMModel):
     name: str | None = Field(default=None, min_length=2, max_length=150)
     role: UserRole | None = None
+    department: Department | None = None
+    department_other: str | None = Field(default=None, max_length=100)
     is_active: bool | None = None
 
     @field_validator("name")

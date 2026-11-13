@@ -1,0 +1,57 @@
+"""add estimate audit fields to projects
+
+Revision ID: 249e8a5f64b3
+Revises: 459450bbb8de
+Create Date: 2026-11-12 10:50:12.778931
+
+"""
+from __future__ import annotations
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = '249e8a5f64b3'
+down_revision: Union[str, None] = '459450bbb8de'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column('projects', sa.Column('estimated_completion_set_by', sa.Uuid(), nullable=True))
+    op.add_column(
+        'projects',
+        sa.Column('estimated_completion_set_at', sa.DateTime(timezone=True), nullable=True),
+    )
+    op.add_column(
+        'projects',
+        sa.Column(
+            'estimated_completion_edited_by_member',
+            sa.Boolean(),
+            server_default='false',
+            nullable=False,
+            comment='True once an assigned team member has used their one-time estimate edit',
+        ),
+    )
+    op.create_foreign_key(
+        None,
+        'projects',
+        'users',
+        ['estimated_completion_set_by'],
+        ['id'],
+        ondelete='SET NULL',
+    )
+
+
+def downgrade() -> None:
+    op.drop_constraint(
+        'projects_estimated_completion_set_by_fkey',
+        'projects',
+        type_='foreignkey',
+    )
+    op.drop_column('projects', 'estimated_completion_edited_by_member')
+    op.drop_column('projects', 'estimated_completion_set_at')
+    op.drop_column('projects', 'estimated_completion_set_by')
